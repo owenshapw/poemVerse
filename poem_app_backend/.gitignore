@@ -1,12 +1,31 @@
-# Flutter/Dart相关
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-.packages
-.pub-cache/
-.pub/
+# Python相关
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
 build/
-*.lock
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# 虚拟环境
+.venv/
+venv/
+ENV/
+env/
 
 # 环境变量文件
 .env
@@ -49,18 +68,14 @@ logs/
 *.tmp
 *.temp
 
-# iOS相关
-ios/Pods/
-ios/Runner.xcworkspace/xcshareddata/
-ios/Runner.xcworkspace/xcuserdata/
+# 上传的文件（可能包含敏感信息）
+uploads/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
 
-# Android相关
-android/.gradle/
-android/local.properties
-android/app/debug/
-android/app/release/
-android/app/profile/
-
-# 测试覆盖率
-coverage/
-*.lcov
+# 测试文件
+test_*.py
+debug_*.py 
