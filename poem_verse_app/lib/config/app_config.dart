@@ -10,7 +10,7 @@ class AppConfig {
       // 调试模式
       if (defaultTargetPlatform == TargetPlatform.iOS) {
         // iOS真机使用本机IP地址
-        return 'http://192.168.2.105:5001';
+        return 'http://192.168.14.18:5001';
       } else if (defaultTargetPlatform == TargetPlatform.android) {
         // Android模拟器使用10.0.2.2
         return 'http://10.0.2.2:5001';

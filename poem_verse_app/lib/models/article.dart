@@ -7,6 +7,7 @@ class Article {
   final String imageUrl;
   final List<String> tags;
   final String createdAt;
+  final String userId; // 添加用户ID字段
 
   Article({
     required this.id,
@@ -16,6 +17,7 @@ class Article {
     required this.imageUrl,
     required this.tags,
     required this.createdAt,
+    required this.userId, // 添加用户ID参数
   });
 
   factory Article.fromJson(Map<String, dynamic> json) {
@@ -27,6 +29,7 @@ class Article {
       imageUrl: json['image_url'] ?? '',
       tags: List<String>.from(json['tags'] ?? []),
       createdAt: json['created_at'] ?? '',
+      userId: json['user_id'] ?? '', // 从JSON中获取用户ID
     );
   }
 }

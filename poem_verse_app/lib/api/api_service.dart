@@ -51,18 +51,25 @@ class ApiService {
   }
 
   static Future<http.Response> createArticle(
-      String token, String title, String content, List<String> tags) async {
+      String token, String title, String content, List<String> tags, {String? previewImageUrl}) async {
+    final Map<String, dynamic> body = {
+      'title': title,
+      'content': content,
+      'tags': tags,
+    };
+    
+    // 如果提供了预览图片URL，添加到请求体中
+    if (previewImageUrl != null) {
+      body['preview_image_url'] = previewImageUrl;
+    }
+    
     return await http.post(
       Uri.parse('$baseUrl/articles'),
       headers: {
         'Content-Type': 'application/json; charset=UTF-8',
         'Authorization': 'Bearer $token'
       },
-      body: jsonEncode(<String, dynamic>{
-        'title': title,
-        'content': content,
-        'tags': tags,
-      }),
+      body: jsonEncode(body),
     );
   }
 
@@ -92,6 +99,16 @@ class ApiService {
         'content': content,
         'tags': tags,
       }),
+    );
+  }
+
+  static Future<http.Response> deleteArticle(String token, String articleId) async {
+    return await http.delete(
+      Uri.parse('$baseUrl/articles/$articleId'),
+      headers: {
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token'
+      },
     );
   }
 }

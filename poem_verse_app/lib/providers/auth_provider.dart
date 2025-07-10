@@ -10,6 +10,25 @@ class AuthProvider with ChangeNotifier {
   String? get token => _token;
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _token != null;
+  
+  // 从JWT token中解析用户ID
+  String? get userId {
+    if (_token == null) return null;
+    try {
+      final parts = _token!.split('.');
+      if (parts.length != 3) return null;
+      
+      final payload = parts[1];
+      final normalized = base64Url.normalize(payload);
+      final resp = utf8.decode(base64Url.decode(normalized));
+      final payloadMap = json.decode(resp);
+      
+      return payloadMap['user_id'];
+    } catch (e) {
+      print('解析用户ID失败: $e');
+      return null;
+    }
+  }
 
   Future<bool> login(String email, String password) async {
     _isLoading = true;

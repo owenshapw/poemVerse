@@ -18,9 +18,12 @@ class HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    Provider.of<ArticleProvider>(context, listen: false)
-        .fetchArticles(authProvider.token!);
+    // 使用WidgetsBinding.instance.addPostFrameCallback来避免在构建过程中调用setState
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      Provider.of<ArticleProvider>(context, listen: false)
+          .fetchArticles(authProvider.token!);
+    });
   }
 
   String _buildImageUrl(String imageUrl) {

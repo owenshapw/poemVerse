@@ -1,7 +1,10 @@
 // lib/screens/article_detail_screen.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:poem_verse_app/models/article.dart';
 import 'package:poem_verse_app/config/app_config.dart';
+import 'package:poem_verse_app/providers/auth_provider.dart';
+import 'package:poem_verse_app/providers/article_provider.dart';
 
 class ArticleDetailScreen extends StatelessWidget {
   final Article article;
@@ -10,6 +13,85 @@ class ArticleDetailScreen extends StatelessWidget {
 
   String _buildImageUrl(BuildContext context, String imageUrl) {
     return AppConfig.buildImageUrl(imageUrl);
+  }
+
+  // 检查是否为文章作者
+  bool _isAuthor(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    return authProvider.userId == article.userId;
+  }
+
+  // 删除文章
+  Future<void> _deleteArticle(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('确认删除'),
+          content: Text('确定要删除这篇诗篇吗？删除后无法恢复。'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+              child: Text('删除'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      try {
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
+        
+        // 显示加载指示器
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return Center(
+              child: CircularProgressIndicator(),
+            );
+          },
+        );
+
+        // 调用删除API
+        await articleProvider.deleteArticle(authProvider.token!, article.id);
+        
+        // 关闭加载指示器
+        Navigator.of(context).pop();
+        
+        // 显示成功消息
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('诗篇删除成功'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+        // 返回上一页
+        Navigator.of(context).pop();
+        
+      } catch (e) {
+        // 关闭加载指示器
+        Navigator.of(context).pop();
+        
+        // 显示错误消息
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('删除失败：${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -27,6 +109,12 @@ class ArticleDetailScreen extends StatelessWidget {
               );
             },
           ),
+          // 仅对文章作者显示删除按钮
+          if (_isAuthor(context))
+            IconButton(
+              icon: Icon(Icons.delete, color: Colors.red),
+              onPressed: () => _deleteArticle(context),
+            ),
         ],
       ),
       body: SingleChildScrollView(
@@ -37,7 +125,7 @@ class ArticleDetailScreen extends StatelessWidget {
             if (article.imageUrl.isNotEmpty)
               Container(
                 width: double.infinity,
-                height: 300,
+                height: 260, // 调整了
                 child: Image.network(
                   _buildImageUrl(context, article.imageUrl),
                   fit: BoxFit.cover,
@@ -185,6 +273,23 @@ class ArticleDetailScreen extends StatelessWidget {
                       ),
                     ],
                   ),
+                  
+                  // 仅对文章作者显示删除按钮
+                  if (_isAuthor(context)) ...[
+                    SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _deleteArticle(context),
+                        icon: Icon(Icons.delete, color: Colors.white),
+                        label: Text('删除诗篇'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

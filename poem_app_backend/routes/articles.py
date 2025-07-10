@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from models.supabase_client import supabase_client
 from utils.image_generator import generate_article_image
+from utils.ai_image_generator import ai_generator
 import jwt
 from functools import wraps
 
@@ -46,6 +47,7 @@ def create_article(current_user_id):
         content = data.get('content')
         tags = data.get('tags', [])
         author = data.get('author', '')
+        preview_image_url = data.get('preview_image_url')  # 新增：预览图片URL
         
         if not title or not content:
             return jsonify({'error': '标题和内容不能为空'}), 400
@@ -55,17 +57,33 @@ def create_article(current_user_id):
         if not article:
             return jsonify({'error': '文章创建失败'}), 500
         
-        # 自动生成图片
+        # 处理图片
         try:
-            image_url = generate_article_image(article)
+            image_url = None
+            
+            # 如果提供了预览图片URL，直接使用
+            if preview_image_url:
+                print(f"使用预览图片: {preview_image_url}")
+                image_url = preview_image_url
+            else:
+                # 否则生成新图片
+                print("未提供预览图片，生成新图片")
+                # 优先使用AI图片生成
+                image_url = ai_generator.generate_poem_image(article)
+                
+                # 如果AI生成失败，回退到文字排版
+                if not image_url:
+                    print("AI图片生成失败，使用文字排版")
+                    image_url = generate_article_image(article)
+            
             if image_url:
                 # 更新文章的图片URL
                 updated_article = supabase_client.update_article_image(article['id'], image_url)
                 if updated_article:
                     article = updated_article
         except Exception as e:
-            print(f"自动生成图片失败: {str(e)}")
-            # 图片生成失败不影响文章发布
+            print(f"图片处理失败: {str(e)}")
+            # 图片处理失败不影响文章发布
         
         return jsonify({
             'message': '文章上传成功',
@@ -103,7 +121,8 @@ def get_articles():
                 'author': article['author'],
                 'author_email': author_info['email'] if author_info else '',
                 'image_url': article['image_url'],
-                'created_at': article['created_at']
+                'created_at': article['created_at'],
+                'user_id': article['user_id']  # 添加用户ID字段
             })
         
         return jsonify({

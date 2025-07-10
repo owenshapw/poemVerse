@@ -107,6 +107,7 @@ class _CreateArticleScreenState extends State<CreateArticleScreen> {
       _titleController.text,
       _contentController.text,
       _tags,
+      previewImageUrl: _previewImageUrl, // 传递预览图片URL
     );
 
     setState(() {

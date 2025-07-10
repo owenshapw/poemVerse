@@ -30,11 +30,11 @@ class ArticleProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> createArticle(String token, String title, String content, List<String> tags) async {
+  Future<void> createArticle(String token, String title, String content, List<String> tags, {String? previewImageUrl}) async {
     _isLoading = true;
     notifyListeners();
 
-    final response = await ApiService.createArticle(token, title, content, tags);
+    final response = await ApiService.createArticle(token, title, content, tags, previewImageUrl: previewImageUrl);
 
     if (response.statusCode == 201) {
       // Article created successfully, refresh the list
@@ -69,6 +69,19 @@ class ArticleProvider with ChangeNotifier {
     } else {
       print('生成预览失败: ${response.statusCode} - ${response.body}');
       return null;
+    }
+  }
+
+  Future<void> deleteArticle(String token, String articleId) async {
+    final response = await ApiService.deleteArticle(token, articleId);
+    
+    if (response.statusCode == 200) {
+      // 删除成功，刷新文章列表
+      await fetchArticles(token);
+    } else {
+      // 处理错误
+      final errorData = json.decode(response.body);
+      throw Exception(errorData['error'] ?? '删除失败');
     }
   }
 }

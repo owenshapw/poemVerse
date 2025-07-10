@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from models.supabase_client import supabase_client
 from utils.image_generator import generate_article_image
+from utils.ai_image_generator import ai_generator
 import jwt
 from functools import wraps
 
@@ -57,7 +58,14 @@ def generate_image(current_user_id):
             return jsonify({'error': '无权限生成此文章的图片'}), 403
         
         # 生成图片
-        image_url = generate_article_image(article)
+        # 优先使用AI图片生成
+        image_url = ai_generator.generate_poem_image(article)
+        
+        # 如果AI生成失败，回退到文字排版
+        if not image_url:
+            print("AI图片生成失败，使用文字排版")
+            image_url = generate_article_image(article)
+            
         if not image_url:
             return jsonify({'error': '图片生成失败'}), 500
         
@@ -145,7 +153,14 @@ def generate_preview(current_user_id):
         }
         
         # 生成预览图片
-        image_url = generate_article_image(temp_article, is_preview=True)
+        # 优先使用AI图片生成
+        image_url = ai_generator.generate_poem_image(temp_article)
+        
+        # 如果AI生成失败，回退到文字排版
+        if not image_url:
+            print("AI预览图片生成失败，使用文字排版")
+            image_url = generate_article_image(temp_article, is_preview=True)
+            
         if not image_url:
             return jsonify({'error': '预览图片生成失败'}), 500
         
