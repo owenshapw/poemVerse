@@ -148,7 +148,13 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
     try {
       final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final token = authProvider.token!;
+      
+      // 安全地获取token
+      final token = authProvider.token;
+      if (token == null) {
+        throw Exception('用户未登录或登录已过期，请重新登录');
+      }
+
       final title = _titleController.text;
       final content = _contentController.text;
       final tags = List<String>.from(_tags);
@@ -160,7 +166,7 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
       
       if (widget.isEdit && widget.article != null) {
         // 编辑模式，调用更新接口
-        print('编辑模式，文章ID: ${widget.article!.id}');
+        print('编辑模��，文章ID: ${widget.article!.id}');
         await articleProvider.updateArticle(
           token, widget.article!.id, title, content, tags, previewImageUrl: previewImageUrl,
         );

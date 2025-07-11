@@ -155,11 +155,11 @@ class AIImageGenerator:
                 article.get('tags', [])
             )
             print(f"生成提示词: {prompt}")
-            # 尝试使用Stability AI
-            image_data = self.generate_with_stability_ai(prompt, negative_prompt)
-            # 如果失败，尝试Hugging Face
+            # 优先尝试Hugging Face
+            image_data = self.generate_with_huggingface(prompt, negative_prompt)
+            # 如果失败，再尝试使用Stability AI
             if not image_data:
-                image_data = self.generate_with_huggingface(prompt, negative_prompt)
+                image_data = self.generate_with_stability_ai(prompt, negative_prompt)
             if image_data:
                 # 上传到 Supabase Storage
                 filename = f"ai_generated_{uuid.uuid4().hex}.png"
