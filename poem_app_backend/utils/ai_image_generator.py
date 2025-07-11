@@ -170,13 +170,23 @@ class AIImageGenerator:
                 filename = f"ai_generated_{uuid.uuid4().hex}.png"
                 bucket = "images"
                 
-                # 根据是否有token，决定使用哪个supabase客户端实例
                 storage_client = supabase.storage
                 if user_token:
-                    # 如果有用户token，创建一个新的、经过认证的客户端实例用于本次上传
+                    # 如果有用户token，创建一个新的客户端实例，并为其设置正确的认证头
                     from supabase import create_client
-                    authed_supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
-                    authed_supabase.auth.set_session(access_token=user_token, refresh_token=user_token) # 使用JWT
+                    
+                    # 创建一个带有用户认证头的新客户端
+                    authed_supabase = create_client(
+                        os.getenv("SUPABASE_URL"),
+                        os.getenv("SUPABASE_KEY"),
+                        options={
+                            "global": {
+                                "headers": {
+                                    "Authorization": f"Bearer {user_token}"
+                                }
+                            }
+                        }
+                    )
                     storage_client = authed_supabase.storage
 
                 # 上传图片内容
