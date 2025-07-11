@@ -7,6 +7,11 @@ from routes.comments import comments_bp
 from routes.generate import generate_bp
 from models.supabase_client import supabase_client
 from routes.upload import upload_bp
+import os
+
+# 启动时打印环境变量，便于排查
+print("SUPABASE_URL:", os.environ.get("SUPABASE_URL"))
+print("SUPABASE_KEY:", os.environ.get("SUPABASE_KEY"))
 
 def create_app():
     app = Flask(__name__)

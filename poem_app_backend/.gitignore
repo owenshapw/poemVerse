@@ -78,4 +78,4 @@ uploads/
 
 # 测试文件
 test_*.py
-debug_*.py 
+debug_*.py
