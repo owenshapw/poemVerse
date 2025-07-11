@@ -14,8 +14,6 @@ class ApiService {
     return AppConfig.backendApiUrl;
   }
 
-  static const String baseUrlLocal = 'http://127.0.0.1:5001'; // iOS模拟器用 localhost
-
   static Future<Map<String, dynamic>> fetchHomeArticles() async {
     // 尝试主URL
     try {

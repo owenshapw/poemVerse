@@ -32,46 +32,36 @@ class AuthProvider with ChangeNotifier {
   Future<bool> login(String email, String password) async {
     _isLoading = true;
     notifyListeners();
-
     try {
       final response = await ApiService.login(email, password);
       if (response.containsKey('token')) {
         _token = response['token'];
-        _isLoading = false;
-        notifyListeners();
         return true;
-      } else {
-        _isLoading = false;
-        notifyListeners();
-        return false;
       }
+      return false;
     } catch (e) {
+      return false;
+    } finally {
       _isLoading = false;
       notifyListeners();
-      return false;
     }
   }
 
-  Future<bool> register(String username, String email, String password) async {
+  Future<bool> register(String email, String password, String username) async {
     _isLoading = true;
     notifyListeners();
-
     try {
       final response = await ApiService.register(email, password, username);
       if (response.containsKey('token')) {
         _token = response['token'];
-        _isLoading = false;
-        notifyListeners();
         return true;
-      } else {
-        _isLoading = false;
-        notifyListeners();
-        return false;
       }
+      return false;
     } catch (e) {
+      return false;
+    } finally {
       _isLoading = false;
       notifyListeners();
-      return false;
     }
   }
 

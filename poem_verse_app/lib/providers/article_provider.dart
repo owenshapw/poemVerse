@@ -69,7 +69,7 @@ class ArticleProvider with ChangeNotifier {
   }
 
   Future<void> updateArticle(String token, String articleId, String title, String content, List<String> tags, {String? previewImageUrl}) async {
-    final url = Uri.parse('${ApiService.baseUrlLocal}/api/articles/$articleId');
+    final url = Uri.parse('${ApiService.baseUrl}/articles/$articleId');
     final headers = {
       'Authorization': 'Bearer $token',
       'Content-Type': 'application/json',
