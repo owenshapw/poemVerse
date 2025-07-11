@@ -5,7 +5,8 @@ from PIL import Image
 from io import BytesIO
 import uuid
 from flask import current_app
-from models.supabase_client import supabase  # 新增导入
+from models.supabase_client import supabase_client
+from supabase.client import create_client  # 正确导入
 
 class AIImageGenerator:
     """AI图片生成器"""
@@ -170,23 +171,18 @@ class AIImageGenerator:
                 filename = f"ai_generated_{uuid.uuid4().hex}.png"
                 bucket = "images"
                 
-                storage_client = supabase.storage
+                if not supabase_client.supabase:
+                    raise RuntimeError("Supabase client 未初始化")
+                storage_client = supabase_client.supabase.storage
+                
                 if user_token:
-                    # 如果有用户token，创建一个新的客户端实例，并为其设置正确的认证头
-                    from supabase import create_client
-                    
-                    # 创建一个带有用户认证头的新客户端
+                    supabase_url = os.getenv("SUPABASE_URL") or ""
+                    supabase_key = os.getenv("SUPABASE_KEY") or ""
                     authed_supabase = create_client(
-                        os.getenv("SUPABASE_URL"),
-                        os.getenv("SUPABASE_KEY"),
-                        options={
-                            "global": {
-                                "headers": {
-                                    "Authorization": f"Bearer {user_token}"
-                                }
-                            }
-                        }
+                        supabase_url,
+                        supabase_key
                     )
+                    authed_supabase.auth.set_session(access_token=user_token, refresh_token=user_token)
                     storage_client = authed_supabase.storage
 
                 # 上传图片内容
@@ -198,7 +194,7 @@ class AIImageGenerator:
                 print(f"Supabase上传返回: {res}")
                 
                 # 简单判断：只要没有抛异常就认为上传成功
-                public_url = supabase.storage.from_(bucket).get_public_url(filename)
+                public_url = supabase_client.supabase.storage.from_(bucket).get_public_url(filename)
                 return public_url
             return None
         except Exception as e:
