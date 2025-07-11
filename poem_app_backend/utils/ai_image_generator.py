@@ -118,6 +118,7 @@ class AIImageGenerator:
     def generate_with_huggingface(self, prompt, negative_prompt):
         """使用Hugging Face生成图片"""
         if not self.hf_api_key:
+            print("Hugging Face API key未设置，跳过生成。")
             return None
             
         headers = {
@@ -140,12 +141,16 @@ class AIImageGenerator:
             response = requests.post(self.hf_api_url, headers=headers, json=data)
             if response.status_code == 200:
                 return BytesIO(response.content)
+            else:
+                print(f"Hugging Face API 错误: 状态码 {response.status_code}")
+                print(f"Hugging Face API 响应: {response.text[:500]}") # 打印前500个字符的响应
+                
         except Exception as e:
             print(f"Hugging Face生成失败: {e}")
         
         return None
     
-    def generate_poem_image(self, article):
+    def generate_poem_image(self, article, user_token=None):
         """为诗词生成AI图片，并上传到Supabase Storage"""
         try:
             # 生成提示词
@@ -164,9 +169,24 @@ class AIImageGenerator:
                 # 上传到 Supabase Storage
                 filename = f"ai_generated_{uuid.uuid4().hex}.png"
                 bucket = "images"
+                
+                # 根据是否有token，决定使用哪个supabase客户端实例
+                storage_client = supabase.storage
+                if user_token:
+                    # 如果有用户token，创建一个新的、经过认证的客户端实例用于本次上传
+                    from supabase import create_client
+                    authed_supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
+                    authed_supabase.auth.set_session(access_token=user_token, refresh_token=user_token) # 使用JWT
+                    storage_client = authed_supabase.storage
+
                 # 上传图片内容
-                res = supabase.storage.from_(bucket).upload(filename, image_data.getvalue(), {"content-type": "image/png"})
+                res = storage_client.from_(bucket).upload(
+                    filename, 
+                    image_data.getvalue(), 
+                    {"content-type": "image/png"}
+                )
                 print(f"Supabase上传返回: {res}")
+                
                 # 简单判断：只要没有抛异常就认为上传成功
                 public_url = supabase.storage.from_(bucket).get_public_url(filename)
                 return public_url

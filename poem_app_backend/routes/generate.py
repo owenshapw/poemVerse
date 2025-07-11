@@ -57,14 +57,18 @@ def generate_image(current_user_id):
         if article['user_id'] != current_user_id:
             return jsonify({'error': '无权限生成此文章的图片'}), 403
         
+        # 提取token
+        token = request.headers['Authorization'].split(" ")[1]
+        
         # 生成图片
         # 优先使用AI图片生成
-        image_url = ai_generator.generate_poem_image(article)
+        image_url = ai_generator.generate_poem_image(article, user_token=token)
         
         # 如果AI生成失败，回退到文字排版
         if not image_url:
             print("AI图片生成失败，使用文字排版")
-            image_url = generate_article_image(article)
+            # 注意：同样需要为备用方案传递token
+            image_url = generate_article_image(article, user_token=token)
             
         if not image_url:
             return jsonify({'error': '图片生成失败'}), 500
@@ -152,14 +156,18 @@ def generate_preview(current_user_id):
             'tags': tags
         }
         
+        # 提取token
+        token = request.headers['Authorization'].split(" ")[1]
+        
         # 生成预览图片
         # 优先使用AI图片生成
-        image_url = ai_generator.generate_poem_image(temp_article)
+        image_url = ai_generator.generate_poem_image(temp_article, user_token=token)
         
         # 如果AI生成失败，回退到文字排版
         if not image_url:
             print("AI预览图片生成失败，使用文字排版")
-            image_url = generate_article_image(temp_article, is_preview=True)
+            # 注意：同样需要为备用方案传递token
+            image_url = generate_article_image(temp_article, is_preview=True, user_token=token)
             
         if not image_url:
             return jsonify({'error': '预览图片生成失败'}), 500

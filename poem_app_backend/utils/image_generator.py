@@ -8,7 +8,7 @@ import random
 from models.supabase_client import supabase_client
 import io
 
-def generate_article_image(article, is_preview=False):
+def generate_article_image(article, is_preview=False, user_token=None):
     """生成文章排版图片并上传到Supabase"""
     try:
         # ... [前面的图片生成代码保持不变] ...
@@ -68,7 +68,7 @@ def generate_article_image(article, is_preview=False):
                       outline='#D2691E', width=2)
         
         # 绘制标题
-        title = str(article['title'])  # 确保是字符串
+        title = str(article['title'])  # 确���是字符串
         try:
             title_bbox = draw.textbbox((0, 0), title, font=title_font)
             title_width = title_bbox[2] - title_bbox[0]
@@ -225,8 +225,16 @@ def generate_article_image(article, is_preview=False):
         
         bucket_name = "images"
 
+        # 根据是否有token，决定使用哪个supabase客户端实例
+        storage_client = supabase_client.supabase.storage
+        if user_token:
+            from supabase import create_client
+            authed_supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
+            authed_supabase.auth.set_session(access_token=user_token, refresh_token=user_token)
+            storage_client = authed_supabase.storage
+
         # 上传到Supabase Storage
-        supabase_client.supabase.storage.from_(bucket_name).upload(
+        storage_client.from_(bucket_name).upload(
             path=filename,
             file=buffer.read(),
             file_options={'content-type': 'image/png', 'upsert': 'true'}
