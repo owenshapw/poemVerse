@@ -6,6 +6,7 @@ from routes.articles import articles_bp
 from routes.comments import comments_bp
 from routes.generate import generate_bp
 from models.supabase_client import supabase_client
+from routes.upload import upload_bp
 
 def create_app():
     app = Flask(__name__)
@@ -28,6 +29,7 @@ def create_app():
     app.register_blueprint(articles_bp, url_prefix='/api')
     app.register_blueprint(comments_bp, url_prefix='/api')
     app.register_blueprint(generate_bp, url_prefix='/api')
+    app.register_blueprint(upload_bp)
     
     @app.route('/')
     def index():

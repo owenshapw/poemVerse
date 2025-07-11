@@ -5,6 +5,7 @@ from PIL import Image
 from io import BytesIO
 import uuid
 from flask import current_app
+from models.supabase_client import supabase  # 新增导入
 
 class AIImageGenerator:
     """AI图片生成器"""
@@ -145,7 +146,7 @@ class AIImageGenerator:
         return None
     
     def generate_poem_image(self, article):
-        """为诗词生成AI图片"""
+        """为诗词生成AI图片，并上传到Supabase Storage"""
         try:
             # 生成提示词
             prompt, negative_prompt = self.generate_prompt_from_poem(
@@ -153,33 +154,23 @@ class AIImageGenerator:
                 article['content'], 
                 article.get('tags', [])
             )
-            
             print(f"生成提示词: {prompt}")
-            
             # 尝试使用Stability AI
             image_data = self.generate_with_stability_ai(prompt, negative_prompt)
-            
             # 如果失败，尝试Hugging Face
             if not image_data:
                 image_data = self.generate_with_huggingface(prompt, negative_prompt)
-            
             if image_data:
-                # 保存图片
+                # 上传到 Supabase Storage
                 filename = f"ai_generated_{uuid.uuid4().hex}.png"
-                upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
-                filepath = os.path.join(upload_folder, filename)
-                
-                # 确保目录存在
-                os.makedirs(upload_folder, exist_ok=True)
-                
-                # 保存图片
-                with open(filepath, 'wb') as f:
-                    f.write(image_data.getvalue())
-                
-                return f"/uploads/{filename}"
-            
+                bucket = "images"
+                # 上传图片内容
+                res = supabase.storage.from_(bucket).upload(filename, image_data.getvalue(), {"content-type": "image/png"})
+                print(f"Supabase上传返回: {res}")
+                # 简单判断：只要没有抛异常就认为上传成功
+                public_url = supabase.storage.from_(bucket).get_public_url(filename)
+                return public_url
             return None
-            
         except Exception as e:
             print(f"AI图片生成失败: {e}")
             return None

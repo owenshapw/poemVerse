@@ -1,9 +1,15 @@
-from supabase.client import create_client, Client
+from supabase import create_client, Client
 from flask import current_app
 import uuid
 from datetime import datetime
 import bcrypt
 from typing import Optional, Union
+import os
+
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 class SupabaseClient:
     def __init__(self):

@@ -5,10 +5,13 @@ from flask import current_app
 import requests
 from io import BytesIO
 import random
+from models.supabase_client import supabase_client
+import io
 
 def generate_article_image(article, is_preview=False):
-    """生成文章排版图片"""
+    """生成文章排版图片并上传到Supabase"""
     try:
+        # ... [前面的图片生成代码保持不变] ...
         # 创建图片 - 使用更大的尺寸
         width = 1200  # 增加宽度
         height = 1600  # 增加高度
@@ -208,31 +211,38 @@ def generate_article_image(article, is_preview=False):
         ], fill='#FFF8DC', outline='#DAA520', width=2)
         
         draw.text((page_x, page_y), page_text, fill='#8B4513', font=author_font)
-        
-        # 保存图片
+
+        # 将图片保存到内存缓冲区
+        buffer = io.BytesIO()
+        image.save(buffer, format='PNG', quality=95)
+        buffer.seek(0)
+
+        # 定义文件名和存储桶
         if is_preview:
-            # 预览模式：保存到临时目录
-            filename = f"preview_{uuid.uuid4()}.png"
-            filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+            filename = f"preview_{uuid.uuid4().hex}.png"
         else:
-            # 正式模式：保存到正式目录
-            filename = f"article_{uuid.uuid4()}.png"
-            filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+            filename = f"article_{uuid.uuid4().hex}.png"
         
-        # 确保目录存在
-        os.makedirs(current_app.config['UPLOAD_FOLDER'], exist_ok=True)
+        bucket_name = "images"
+
+        # 上传到Supabase Storage
+        supabase_client.supabase.storage.from_(bucket_name).upload(
+            path=filename,
+            file=buffer.read(),
+            file_options={'content-type': 'image/png', 'upsert': 'true'}
+        )
+
+        # 获取公开URL
+        public_url = supabase_client.supabase.storage.from_(bucket_name).get_public_url(filename)
         
-        # 保存图片
-        image.save(filepath, 'PNG', quality=95)
-        
-        # 返回图片URL
-        image_url = f"/uploads/{filename}"
-        
-        return image_url
+        return public_url
         
     except Exception as e:
-        print(f"生成图片失败: {str(e)}")
+        print(f"生成图片并上传失败: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return None
+
 
 def generate_background_image():
     """生成背景图片（可选功能）"""
