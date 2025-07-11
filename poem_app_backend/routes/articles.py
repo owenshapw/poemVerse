@@ -277,7 +277,6 @@ def get_home_articles():
     - top_week_list: 过去一周点赞最多的诗（多条，列表）
     """
     try:
-        from models.supabase_client import supabase_client
         if supabase_client.supabase is None:
             return jsonify({'error': 'Supabase client 未初始化'}), 500
         
