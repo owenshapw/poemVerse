@@ -85,10 +85,6 @@ def login():
         if not user:
             print(f"User not found for email: {email}")
             return jsonify({'error': '用户不存在'}), 404
-        
-        print(f"User found: {user['id']}")
-        
-        # 验证密码
         print("Verifying password...")
         if not bcrypt.checkpw(password.encode('utf-8'), user['password_hash'].encode('utf-8')):
             print("Password verification failed")
@@ -186,11 +182,12 @@ def reset_password():
         
         # 更新密码
         password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        if not supabase_client.supabase:
+            return jsonify({'error': 'Supabase client 未初始化'}), 500
         result = supabase_client.supabase.table('users').update({'password_hash': password_hash}).eq('id', user_id).execute()
         
-        if not result.data:
+        if not getattr(result, 'data', None):
             return jsonify({'error': '密码更新失败'}), 500
-        
         return jsonify({'message': '密码重置成功'}), 200
         
     except Exception as e:

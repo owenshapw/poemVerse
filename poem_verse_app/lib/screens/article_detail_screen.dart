@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:poem_verse_app/models/article.dart';
-import 'package:poem_verse_app/config/app_config.dart';
 import 'package:poem_verse_app/providers/auth_provider.dart';
 import 'package:poem_verse_app/providers/article_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -10,7 +9,7 @@ import 'package:poem_verse_app/api/api_service.dart';
 import 'package:poem_verse_app/screens/create_article_screen.dart'; // Added import for CreateArticleScreen
 
 class ArticleDetailScreen extends StatefulWidget {
-  Article article;
+  final Article article;
 
   ArticleDetailScreen({super.key, required this.article});
 
@@ -19,15 +18,20 @@ class ArticleDetailScreen extends StatefulWidget {
 }
 
 class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
-  String _buildImageUrl(BuildContext context, String imageUrl) {
-    return AppConfig.buildImageUrl(imageUrl);
+  late Article _article;
+
+  @override
+  void initState() {
+    super.initState();
+    _article = widget.article;
   }
+
 
   // 检查是否为文章作者
   bool _isAuthor(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    print('[DEBUG] 当前登录userId: \'${authProvider.userId}\', 文章userId: \'${widget.article.userId}\'');
-    return authProvider.userId == widget.article.userId;
+    print('[DEBUG] 当前登录userId: \'${authProvider.userId}\', 文章userId: \'${_article.userId}\'');
+    return authProvider.userId == _article.userId;
   }
 
   // 删除文章
@@ -35,7 +39,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
     final token = authProvider.token!;
-    final articleId = widget.article.id;
+    final articleId = _article.id;
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
 
@@ -90,14 +94,14 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   // 分享文章
   void _shareArticle() {
     final shareText = '''
-${widget.article.title}
+${_article.title}
 
-作者：${widget.article.author}
-发布时间：${_formatDate(widget.article.createdAt)}
+作者：${_article.author}
+发布时间：${_formatDate(_article.createdAt)}
 
-${widget.article.content}
+${_article.content}
 
-${widget.article.tags.isNotEmpty ? '标签：${widget.article.tags.join('、')}' : ''}
+${_article.tags.isNotEmpty ? '标签：${_article.tags.join('、')}' : ''}
 
 来自诗篇App
 ''';
@@ -107,9 +111,9 @@ ${widget.article.tags.isNotEmpty ? '标签：${widget.article.tags.join('、')}'
 
   Future<void> _refreshArticle() async {
     try {
-      final updated = await ApiService.getArticleDetail(widget.article.id);
+      final updated = await ApiService.getArticleDetail(_article.id);
       setState(() {
-        widget.article = updated;
+        _article = updated;
       });
     } catch (e) {
       // 可选：弹窗提示刷新失败
@@ -119,7 +123,7 @@ ${widget.article.tags.isNotEmpty ? '标签：${widget.article.tags.join('、')}'
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    print('[DEBUG] build: 当前登录userId: \'${authProvider.userId}\', 文章userId: \'${widget.article.userId}\'');
+    print('[DEBUG] build: 当前登录userId: \'${authProvider.userId}\', 文章userId: \'${_article.userId}\'');
     return Scaffold(
       appBar: AppBar(
         title: Text('诗篇详情'),
@@ -133,7 +137,7 @@ ${widget.article.tags.isNotEmpty ? '标签：${widget.article.tags.join('、')}'
                   context,
                   MaterialPageRoute(
                     builder: (_) => CreateArticleScreen(
-                      article: widget.article,
+                      article: _article,
                       isEdit: true,
                     ),
                   ),
@@ -161,12 +165,12 @@ ${widget.article.tags.isNotEmpty ? '标签：${widget.article.tags.join('、')}'
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 图片部分
-            if (widget.article.imageUrl.isNotEmpty)
+            if (_article.imageUrl.isNotEmpty)
               SizedBox(
                 width: double.infinity,
                 height: 260, // 调整了
                 child: Image.network(
-                  ApiService.buildImageUrl(widget.article.imageUrl),
+                  ApiService.buildImageUrl(_article.imageUrl),
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
@@ -184,7 +188,6 @@ ${widget.article.tags.isNotEmpty ? '标签：${widget.article.tags.join('、')}'
                   },
                 ),
               ),
-            
             // 内容部分
             Padding(
               padding: EdgeInsets.all(16),
@@ -193,22 +196,20 @@ ${widget.article.tags.isNotEmpty ? '标签：${widget.article.tags.join('、')}'
                 children: [
                   // 标题
                   Text(
-                    widget.article.title,
+                    _article.title,
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  
                   SizedBox(height: 16),
-                  
                   // 作者信息
                   Row(
                     children: [
                       Icon(Icons.person, color: Colors.grey),
                       SizedBox(width: 8),
                       Text(
-                        '作者：${widget.article.author}',
+                        '作者：${_article.author}',
                         style: TextStyle(
                           fontSize: 16,
                           color: Colors.grey[600],
@@ -216,16 +217,14 @@ ${widget.article.tags.isNotEmpty ? '标签：${widget.article.tags.join('、')}'
                       ),
                     ],
                   ),
-                  
                   SizedBox(height: 8),
-                  
                   // 创建时间
                   Row(
                     children: [
                       Icon(Icons.access_time, color: Colors.grey, size: 16),
                       SizedBox(width: 8),
                       Text(
-                        '发布时间：${_formatDate(widget.article.createdAt)}',
+                        '发布时间：${_formatDate(_article.createdAt)}',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey[500],
@@ -233,26 +232,22 @@ ${widget.article.tags.isNotEmpty ? '标签：${widget.article.tags.join('、')}'
                       ),
                     ],
                   ),
-                  
                   SizedBox(height: 16),
-                  
                   // 标签
-                  if (widget.article.tags.isNotEmpty) ...[
+                  if (_article.tags.isNotEmpty) ...[
                     Wrap(
                       spacing: 8,
-                      children: widget.article.tags.map((tag) => Chip(
+                      children: _article.tags.map((tag) => Chip(
                         label: Text(tag),
-                        backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                        backgroundColor: Theme.of(context).primaryColor.withAlpha(25),
                         labelStyle: TextStyle(color: Theme.of(context).primaryColor),
                       )).toList(),
                     ),
                     SizedBox(height: 16),
                   ],
-                  
                   // 分隔线
                   Divider(),
                   SizedBox(height: 16),
-                  
                   // 内容
                   Container(
                     width: double.infinity,
@@ -260,10 +255,10 @@ ${widget.article.tags.isNotEmpty ? '标签：${widget.article.tags.join('、')}'
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8F6FF), // 非常浅的紫色背景
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.purple.withOpacity(0.1)),
+                      border: Border.all(color: Colors.purple.withAlpha((255 * 0.1).round())),
                     ),
                     child: Text(
-                      widget.article.content,
+                      _article.content,
                       style: TextStyle(
                         fontSize: 16,
                         height: 1.8,
@@ -272,9 +267,7 @@ ${widget.article.tags.isNotEmpty ? '标签：${widget.article.tags.join('、')}'
                       ),
                     ),
                   ),
-                  
                   SizedBox(height: 32),
-                  
                   // 操作按钮
                   Row(
                     children: [
@@ -305,7 +298,6 @@ ${widget.article.tags.isNotEmpty ? '标签：${widget.article.tags.join('、')}'
                       ),
                     ],
                   ),
-                  
                   SizedBox(height: 32),
                 ],
               ),

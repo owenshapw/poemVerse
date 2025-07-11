@@ -15,8 +15,13 @@ class SupabaseClient:
             app.config['SUPABASE_KEY']
         )
 
+    def get_user_by_email(self, email: str):
+        if self.supabase is None:
+            raise RuntimeError("Supabase client not initialized. Call init_app() first.")
+        result = self.supabase.table('users').select('*').eq('email', email).execute()
+        return result.data[0] if result.data else None
+
     def create_user(self, email: str, password: str, username: Union[str, None] = None):
-        """创建新用户"""
         if self.supabase is None:
             raise RuntimeError("Supabase client not initialized. Call init_app() first.")
         password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
@@ -29,13 +34,6 @@ class SupabaseClient:
         if username:
             user_data['username'] = username
         result = self.supabase.table('users').insert(user_data).execute()
-        return result.data[0] if result.data else None
-
-    def get_user_by_email(self, email: str):
-        """根据邮箱获取用户"""
-        if self.supabase is None:
-            raise RuntimeError("Supabase client not initialized. Call init_app() first.")
-        result = self.supabase.table('users').select('*').eq('email', email).execute()
         return result.data[0] if result.data else None
 
     def get_user_by_id(self, user_id: str):

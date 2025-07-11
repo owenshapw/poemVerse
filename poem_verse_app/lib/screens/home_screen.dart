@@ -75,7 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
           BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
             child: Container(
-              color: Colors.white.withOpacity(0.05),
+              color: Colors.white.withAlpha((255 * 0.05).round()),
             ),
           ),
           // 内容层（SafeArea 只包裹内容）
@@ -124,7 +124,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w400,
-                              color: Colors.white.withOpacity(0.92),
+                              color: Colors.white.withAlpha(230),
                               letterSpacing: 0.5,
                             ),
                           ),
@@ -166,7 +166,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return GestureDetector(
       onTap: () {
         try {
-          print('topMonth: ' + topMonth.toString());
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -175,8 +174,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   return ArticleDetailScreen(
                     article: Article.fromJson(topMonth),
                   );
-                } catch (e, stack) {
-                  print('Article.fromJson error: $e\n$stack');
+                } catch (e) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('数据解析失败: $e')),
@@ -191,8 +189,7 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
           );
-        } catch (e, stack) {
-          print('打开文章失败: $e\n$stack');
+        } catch (e) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('打开文章失败: $e')),
           );
@@ -201,17 +198,17 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         margin: EdgeInsets.symmetric(horizontal: 6, vertical: 8), // 距离屏幕边缘更近
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.18),
+          color: Colors.white.withAlpha(46),
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.18),
+              color: Colors.black.withAlpha(46),
               blurRadius: 32,
               offset: Offset(0, 12),
             ),
           ],
           border: Border.all(
-            color: Colors.white.withOpacity(0.25),
+            color: Colors.white.withAlpha(64),
             width: 1.2,
           ),
         ),
@@ -228,8 +225,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      Color(0xFF667eea).withOpacity(0.7),
-                      Color(0xFF764ba2).withOpacity(0.7),
+                      Color(0xFF667eea).withAlpha(179),
+                      Color(0xFF764ba2).withAlpha(179),
                     ],
                   ),
                 ),
@@ -245,8 +242,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   : Container(
                       width: double.infinity,
                       height: 220,
-                      color: Colors.white.withOpacity(0.1),
-                      child: Icon(Icons.image_outlined, color: Colors.white.withOpacity(0.3), size: 40),
+                      color: Colors.white.withAlpha(25),
+                      child: Icon(Icons.image_outlined, color: Colors.white.withAlpha(77), size: 40),
                     ),
               // 毛玻璃遮罩
               BackdropFilter(
@@ -254,7 +251,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Container(
                   width: double.infinity,
                   height: 220,
-                  color: Colors.white.withOpacity(0.08),
+                  color: Colors.white.withAlpha(20),
                 ),
               ),
               // 渐变遮罩
@@ -267,7 +264,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      Colors.black.withOpacity(0.82),
+                      Colors.black.withAlpha(210),
                     ],
                   ),
                 ),
@@ -288,7 +285,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         fontWeight: FontWeight.bold,
                         shadows: [
                           Shadow(
-                            color: Colors.black.withOpacity(0.7),
+                            color: Colors.black.withAlpha(179),
                             offset: Offset(0, 2),
                             blurRadius: 8,
                           ),
@@ -299,12 +296,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     Text(
                       topMonth['author'] ?? '',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.85),
+                        color: Colors.white.withAlpha(217),
                         fontSize: 18,
                         fontWeight: FontWeight.w400,
                         shadows: [
                           Shadow(
-                            color: Colors.black.withOpacity(0.4),
+                            color: Colors.black.withAlpha(102),
                             offset: Offset(0, 1),
                             blurRadius: 3,
                           ),
@@ -315,11 +312,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     Text(
                       previewText,
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.95),
+                        color: Colors.white.withAlpha(242),
                         fontSize: 18,
                         shadows: [
                           Shadow(
-                            color: Colors.black.withOpacity(0.5),
+                            color: Colors.black.withAlpha(128),
                             offset: Offset(0, 1),
                             blurRadius: 4,
                           ),
@@ -362,17 +359,17 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.16),
+          color: Colors.white.withAlpha(41),
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.10),
+              color: Colors.black.withAlpha(25),
               blurRadius: 16,
               offset: Offset(0, 4),
             ),
           ],
           border: Border.all(
-            color: Colors.white.withOpacity(0.18),
+            color: Colors.white.withAlpha(46),
             width: 1,
           ),
         ),
@@ -383,7 +380,7 @@ class _HomeScreenState extends State<HomeScreen> {
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.13),
+                  color: Colors.black.withAlpha(33),
                   blurRadius: 8,
                   offset: Offset(0, 2),
                 ),
@@ -401,8 +398,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   : Container(
                       width: 56,
                       height: 56,
-                      color: Colors.white.withOpacity(0.1),
-                      child: Icon(Icons.image_outlined, color: Colors.white.withOpacity(0.3), size: 28),
+                      color: Colors.white.withAlpha(25),
+                      child: Icon(Icons.image_outlined, color: Colors.white.withAlpha(77), size: 28),
                     ),
             ),
           ),
@@ -414,7 +411,7 @@ class _HomeScreenState extends State<HomeScreen> {
               fontSize: 17,
               shadows: [
                 Shadow(
-                  color: Colors.black.withOpacity(0.18),
+                  color: Colors.black.withAlpha(46),
                   offset: Offset(0, 1),
                   blurRadius: 2,
                 ),
@@ -427,12 +424,12 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 poem['author'] ?? '',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.85),
+                  color: Colors.white.withAlpha(217),
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
                   shadows: [
                     Shadow(
-                      color: Colors.black.withOpacity(0.13),
+                      color: Colors.black.withAlpha(33),
                       offset: Offset(0, 1),
                       blurRadius: 2,
                     ),
@@ -443,7 +440,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 previewText,
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.92),
+                  color: Colors.white.withAlpha(235),
                   fontSize: 14,
                 ),
                 maxLines: 2,
