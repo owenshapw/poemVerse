@@ -23,7 +23,6 @@ class ArticleProvider with ChangeNotifier {
       _articles = articlesData.map((item) => Article.fromJson(item)).toList();
     } else {
       // Handle error
-      print('获取文章失败: ${response.statusCode} - ${response.body}');
     }
 
     _isLoading = false;
@@ -41,7 +40,6 @@ class ArticleProvider with ChangeNotifier {
       await fetchArticles(token);
     } else {
       // Handle error
-      print('创建文章失败: ${response.statusCode} - ${response.body}');
     }
 
     _isLoading = false;
@@ -55,7 +53,6 @@ class ArticleProvider with ChangeNotifier {
       final Map<String, dynamic> data = json.decode(response.body);
       return data['image_url'];
     } else {
-      print('生成图片失败: ${response.statusCode} - ${response.body}');
       return null;
     }
   }
@@ -67,9 +64,35 @@ class ArticleProvider with ChangeNotifier {
       final Map<String, dynamic> data = json.decode(response.body);
       return data['preview_url'];
     } else {
-      print('生成预览失败: ${response.statusCode} - ${response.body}');
       return null;
     }
+  }
+
+  Future<void> updateArticle(String token, String articleId, String title, String content, List<String> tags, {String? previewImageUrl}) async {
+    final url = Uri.parse('${ApiService.baseUrlLocal}/api/articles/$articleId');
+    final headers = {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+    final body = {
+      'title': title,
+      'content': content,
+      'tags': tags,
+      'preview_image_url': previewImageUrl,
+    };
+    final response = await ApiService.put(url, headers: headers, body: body);
+    if (response.statusCode != 200) {
+      throw Exception('更新失败: ${response.body}');
+    }
+    
+    // 更新成功后刷新文章列表
+    await fetchArticles(token);
+  }
+
+  // 添加一个方法用于刷新所有相关数据
+  Future<void> refreshAllData(String token) async {
+    await fetchArticles(token);
+    notifyListeners();
   }
 
   Future<void> deleteArticle(String token, String articleId) async {

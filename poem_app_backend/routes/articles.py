@@ -4,6 +4,7 @@ from utils.image_generator import generate_article_image
 from utils.ai_image_generator import ai_generator
 import jwt
 from functools import wraps
+from datetime import datetime, timedelta
 
 articles_bp = Blueprint('articles', __name__)
 
@@ -36,6 +37,21 @@ def token_required(f):
         return f(current_user_id, *args, **kwargs)
     
     return decorated
+
+# 工具函数：序列化文章，确保包含 user_id 字段
+
+def serialize_article(article):
+    return {
+        'id': article['id'],
+        'title': article['title'],
+        'content': article['content'],
+        'tags': article['tags'],
+        'author': article['author'],
+        'image_url': article['image_url'],
+        'created_at': article['created_at'],
+        'user_id': article['user_id'],
+        'like_count': article.get('like_count', 0)
+    }
 
 @articles_bp.route('/articles', methods=['POST'])
 @token_required
@@ -87,15 +103,7 @@ def create_article(current_user_id):
         
         return jsonify({
             'message': '文章上传成功',
-            'article': {
-                'id': article['id'],
-                'title': article['title'],
-                'content': article['content'],
-                'tags': article['tags'],
-                'author': article['author'],
-                'image_url': article['image_url'],
-                'created_at': article['created_at']
-            }
+            'article': serialize_article(article)
         }), 201
         
     except Exception as e:
@@ -159,16 +167,7 @@ def get_article(article_id):
             })
         
         return jsonify({
-            'article': {
-                'id': article['id'],
-                'title': article['title'],
-                'content': article['content'],
-                'tags': article['tags'],
-                'author': article['author'],
-                'author_email': author_info['email'] if author_info else '',
-                'image_url': article['image_url'],
-                'created_at': article['created_at']
-            },
+            'article': serialize_article(article),
             'comments': formatted_comments
         }), 200
         
@@ -215,7 +214,8 @@ def get_my_articles(current_user_id):
                 'tags': article['tags'],
                 'author': article['author'],
                 'image_url': article['image_url'],
-                'created_at': article['created_at']
+                'created_at': article['created_at'],
+                'user_id': article['user_id']
             })
         
         return jsonify({
@@ -258,7 +258,8 @@ def search_articles():
                 'author': article['author'],
                 'author_email': author_info['email'] if author_info else '',
                 'image_url': article['image_url'],
-                'created_at': article['created_at']
+                'created_at': article['created_at'],
+                'user_id': article['user_id']
             })
         
         return jsonify({
@@ -267,4 +268,123 @@ def search_articles():
         }), 200
         
     except Exception as e:
+        return jsonify({'error': str(e)}), 500 
+
+@articles_bp.route('/articles/home', methods=['GET'])
+def get_home_articles():
+    """首页聚合接口：
+    - top_month: 过去一个月点赞最多的诗（1条，背景大图）
+    - top_week_list: 过去一周点赞最多的诗（多条，列表）
+    """
+    try:
+        from models.supabase_client import supabase_client
+        if supabase_client.supabase is None:
+            return jsonify({'error': 'Supabase client 未初始化'}), 500
+        
+        print("开始查询首页数据...")
+        now = datetime.utcnow()
+        one_month_ago = now - timedelta(days=30)
+        one_week_ago = now - timedelta(days=7)
+
+        print(f"查询时间范围: {one_month_ago} 到 {now}")
+
+        # 过去一个月点赞最多的诗
+        try:
+            print("查询过去一个月热门诗篇...")
+            month_result = supabase_client.supabase.table('articles') \
+                .select('*') \
+                .gte('created_at', one_month_ago.isoformat()) \
+                .order('like_count', desc=True) \
+                .limit(1) \
+                .execute()
+            top_month = month_result.data[0] if month_result.data else None
+            print(f"一个月热门诗篇查询成功，结果: {len(month_result.data) if month_result.data else 0} 条")
+        except Exception as e:
+            print(f"查询一个月热门诗篇失败: {e}")
+            top_month = None
+
+        # 过去一周点赞最多的诗列表
+        try:
+            print("查询过去一周热门诗篇...")
+            week_result = supabase_client.supabase.table('articles') \
+                .select('*') \
+                .gte('created_at', one_week_ago.isoformat()) \
+                .order('like_count', desc=True) \
+                .limit(10) \
+                .execute()
+            top_week_list = week_result.data if week_result.data else []
+            print(f"一周热门诗篇查询成功，结果: {len(top_week_list)} 条")
+        except Exception as e:
+            print(f"查询一周热门诗篇失败: {e}")
+            top_week_list = []
+
+        # 如果都失败了，尝试获取所有文章
+        if top_month is None and not top_week_list:
+            print("尝试获取所有文章作为备选...")
+            try:
+                all_articles = supabase_client.get_all_articles()
+                if all_articles:
+                    top_month = all_articles[0]
+                    top_week_list = all_articles[:10]
+                    print(f"备选方案成功，获取到 {len(all_articles)} 篇文章")
+            except Exception as e:
+                print(f"备选方案也失败: {e}")
+
+        return jsonify({
+            'top_month': top_month,
+            'top_week_list': top_week_list
+        }), 200
+    except Exception as e:
+        print(f"首页接口异常: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500 
+
+@articles_bp.route('/articles/<article_id>', methods=['PUT'])
+@token_required
+def update_article(current_user_id, article_id):
+    """更新诗篇内容"""
+    try:
+        print(f"开始更新文章: {article_id}")
+        print(f"Supabase client 状态: {supabase_client.supabase is not None}")
+        
+        data = request.get_json()
+        title = data.get('title')
+        content = data.get('content')
+        tags = data.get('tags', [])
+        preview_image_url = data.get('preview_image_url')
+
+        print(f"更新数据: title={title}, content长度={len(content) if content else 0}, tags={tags}, preview_image_url={preview_image_url}")
+
+        # 获取并校验文章
+        print("获取文章信息...")
+        article = supabase_client.get_article_by_id(article_id)
+        if not article:
+            return jsonify({'error': '文章不存在'}), 404
+        if article['user_id'] != current_user_id:
+            return jsonify({'error': '无权限编辑此文章'}), 403
+
+        print("文章验证通过，开始更新...")
+
+        # 更新内容
+        update_data = {
+            'title': title,
+            'content': content,
+            'tags': tags,
+        }
+        if preview_image_url:
+            update_data['image_url'] = preview_image_url
+
+        print(f"更新数据: {update_data}")
+        updated_article = supabase_client.update_article_fields(article_id, update_data)
+        if not updated_article:
+            return jsonify({'error': '更新失败'}), 500
+
+        print("文章更新成功")
+        return jsonify({'message': '更新成功', 'article': serialize_article(updated_article)}), 200
+        
+    except Exception as e:
+        print(f"更新文章异常: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500 

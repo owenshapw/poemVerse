@@ -4,20 +4,18 @@ import 'package:provider/provider.dart';
 import 'package:poem_verse_app/providers/auth_provider.dart';
 
 class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
+
   @override
-  _RegisterScreenState createState() => _RegisterScreenState();
+  RegisterScreenState createState() => RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class RegisterScreenState extends State<RegisterScreen> {
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
   void _register() async {
-    print("Register button pressed");
-    print("Username: ${_usernameController.text}");
-    print("Email: ${_emailController.text}");
-    print("Password: ${_passwordController.text}");
     
     if (_usernameController.text.isEmpty || 
         _emailController.text.isEmpty || 
@@ -29,12 +27,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final success = await authProvider.register(
-      _usernameController.text,
-      _emailController.text,
-      _passwordController.text,
-    );
+    final username = _usernameController.text;
+    final email = _emailController.text;
+    final password = _passwordController.text;
+    final success = await authProvider.register(username, email, password);
     
+    if (!mounted) return;
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('注册成功！')),

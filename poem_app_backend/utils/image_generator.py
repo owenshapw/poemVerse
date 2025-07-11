@@ -87,13 +87,15 @@ def generate_article_image(article, is_preview=False):
             print(f"绘制标题失败: {e}")
             # 使用默认位置绘制标题
             draw.text((width//2 - 100, title_y), title, fill='#2F4F4F', font=title_font)
-        
+
         # 绘制装饰性分隔线
-        line_y = title_y + title_height + 60
+        line_y = int((title_y or 120) + (title_height or 0) + 60)
         # 上分隔线
         draw.line([(150, line_y), (width-150, line_y)], fill='#8B4513', width=3)
         # 装饰点
         for i in range(5):
+            x = 200 + i * 160
+            draw.ellipse([x-3, line_y-3, x+3, line_y+3], fill='#D2691E')
             x = 200 + i * 160
             draw.ellipse([x-3, line_y-3, x+3, line_y+3], fill='#D2691E')
         

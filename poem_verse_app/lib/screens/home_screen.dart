@@ -1,267 +1,458 @@
 // lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
+import 'package:poem_verse_app/api/api_service.dart';
+import 'package:poem_verse_app/models/article.dart';
 import 'package:provider/provider.dart';
 import 'package:poem_verse_app/providers/article_provider.dart';
-import 'package:poem_verse_app/providers/auth_provider.dart';
-import 'package:poem_verse_app/screens/create_article_screen.dart';
-import 'package:poem_verse_app/screens/article_detail_screen.dart';
-import 'package:poem_verse_app/config/app_config.dart';
+import 'article_detail_screen.dart';
+import 'dart:ui';
+import 'package:flutter/services.dart';
+import 'package:poem_verse_app/screens/login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  HomeScreenState createState() => HomeScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> {
+  late Future<Map<String, dynamic>> _homeDataFuture;
+
   @override
   void initState() {
     super.initState();
-    // 使用WidgetsBinding.instance.addPostFrameCallback来避免在构建过程中调用setState
+    _homeDataFuture = ApiService.fetchHomeArticles();
+    
+    // 监听 ArticleProvider 变化，重新获取主页数据
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      Provider.of<ArticleProvider>(context, listen: false)
-          .fetchArticles(authProvider.token!);
+      final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
+      articleProvider.addListener(_onArticleProviderChanged);
     });
   }
 
-  String _buildImageUrl(String imageUrl) {
-    return AppConfig.buildImageUrl(imageUrl);
+  @override
+  void dispose() {
+    final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
+    articleProvider.removeListener(_onArticleProviderChanged);
+    super.dispose();
+  }
+
+  void _onArticleProviderChanged() {
+    setState(() {
+      _homeDataFuture = ApiService.fetchHomeArticles();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final articleProvider = Provider.of<ArticleProvider>(context);
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
+    // 强制状态栏为深色
+    SystemChrome.setSystemUIOverlayStyle(
+      SystemUiOverlayStyle(
+        statusBarColor: Color(0xFF232946), // 与登录页一致的深色
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+    );
     return Scaffold(
-      appBar: AppBar(
-        title: Text('诗篇'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: () {
-              articleProvider.fetchArticles(authProvider.token!);
-            },
+      backgroundColor: Color(0xFF232946), // 与登录页一致的深色，彻底消除SafeArea白色
+      body: Stack(
+        children: [
+          // 蓝紫渐变背景（与登录页一致）
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF667eea),
+                  Color(0xFF764ba2),
+                ],
+              ),
+            ),
           ),
-          IconButton(
-            icon: Icon(Icons.logout),
-            onPressed: () {
-              authProvider.logout();
-            },
+          // 毛玻璃+白色透明遮罩（与登录页一致）
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+            child: Container(
+              color: Colors.white.withOpacity(0.05),
+            ),
+          ),
+          // 内容层（SafeArea 只包裹内容）
+          SafeArea(
+            child: Consumer<ArticleProvider>(
+              builder: (context, articleProvider, child) {
+                return FutureBuilder<Map<String, dynamic>>(
+                  future: _homeDataFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState != ConnectionState.done) {
+                      return Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).primaryColor),
+                        ),
+                      );
+                    }
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Text(
+                          '加载失败: ${snapshot.error}',
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                      );
+                    }
+                    final data = snapshot.data!;
+                    final topMonth = data['top_month'];
+                    final topWeekList = List<Map<String, dynamic>>.from(data['top_week_list']);
+
+                    // 过滤掉大卡片中已经显示的文章
+                    final filteredWeekList = topMonth != null 
+                        ? topWeekList.where((poem) => poem['id'] != topMonth['id']).toList()
+                        : topWeekList;
+
+                    return ListView(
+                      padding: EdgeInsets.only(top: 48), // 整体内容上移
+                      children: [
+                        if (topMonth != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12, left: 8, right: 8, bottom: 6),
+                            child: _buildTopMonthCard(context, topMonth),
+                          ),
+                        Container(
+                          margin: EdgeInsets.only(left: 12, right: 12, top: 2, bottom: 2),
+                          child: Text(
+                            '本周热门',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w400,
+                              color: Colors.white.withOpacity(0.92),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        ...filteredWeekList.take(3).map((poem) => _buildWeekCard(context, poem)),
+                        SizedBox(height: 24),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          // 右上角登录按钮
+          Positioned(
+            top: 56,
+            right: 16,
+            child: IconButton(
+              icon: Icon(Icons.person_outline, color: Colors.white, size: 28),
+              tooltip: '登录',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => LoginScreen()),
+                );
+              },
+            ),
           ),
         ],
       ),
-      body: articleProvider.isLoading
-          ? Center(child: CircularProgressIndicator())
-          : articleProvider.articles.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.article, size: 64, color: Colors.grey),
-                      SizedBox(height: 16),
-                      Text('还没有诗篇', style: TextStyle(fontSize: 18, color: Colors.grey)),
-                      SizedBox(height: 8),
-                      Text('点击右下角按钮发布第一首诗篇', style: TextStyle(color: Colors.grey)),
+    );
+  }
+
+  Widget _buildTopMonthCard(BuildContext context, Map<String, dynamic> topMonth) {
+    String content = topMonth['content'] ?? '';
+    List<String> lines = content.split('\n');
+    String previewText = lines.take(3).join('\n');
+    return GestureDetector(
+      onTap: () {
+        try {
+          print('topMonth: ' + topMonth.toString());
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) {
+                try {
+                  return ArticleDetailScreen(
+                    article: Article.fromJson(topMonth),
+                  );
+                } catch (e, stack) {
+                  print('Article.fromJson error: $e\n$stack');
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('数据解析失败: $e')),
+                    );
+                  });
+                  // 返回一个空页面防止崩溃
+                  return Scaffold(
+                    appBar: AppBar(title: Text('数据错误')),
+                    body: Center(child: Text('数据解析失败: $e')),
+                  );
+                }
+              },
+            ),
+          );
+        } catch (e, stack) {
+          print('打开文章失败: $e\n$stack');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('打开文章失败: $e')),
+          );
+        }
+      },
+      child: Container(
+        margin: EdgeInsets.symmetric(horizontal: 6, vertical: 8), // 距离屏幕边缘更近
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.18),
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.18),
+              blurRadius: 32,
+              offset: Offset(0, 12),
+            ),
+          ],
+          border: Border.all(
+            color: Colors.white.withOpacity(0.25),
+            width: 1.2,
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: Stack(
+            children: [
+              // 背景渐变
+              Container(
+                width: double.infinity,
+                height: 220,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFF667eea).withOpacity(0.7),
+                      Color(0xFF764ba2).withOpacity(0.7),
                     ],
                   ),
-                )
-              : RefreshIndicator(
-                  onRefresh: () async {
-                    await articleProvider.fetchArticles(authProvider.token!);
-                  },
-                  child: ListView.builder(
-                    padding: EdgeInsets.all(16),
-                    itemCount: articleProvider.articles.length,
-                    itemBuilder: (context, index) {
-                      final article = articleProvider.articles[index];
-                      return Card(
-                        margin: EdgeInsets.only(bottom: 16),
-                        elevation: 4,
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => ArticleDetailScreen(article: article),
-                              ),
-                            );
-                          },
-                          borderRadius: BorderRadius.circular(4),
-                          splashColor: Theme.of(context).primaryColor.withOpacity(0.1),
-                          highlightColor: Theme.of(context).primaryColor.withOpacity(0.05),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // 图片部分
-                              if (article.imageUrl.isNotEmpty)
-                                Container(
-                                  width: double.infinity,
-                                  height: 200,
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
-                                    child: Image.network(
-                                      _buildImageUrl(article.imageUrl),
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        return Container(
-                                          color: Colors.grey[200],
-                                          child: Center(
-                                            child: Column(
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              children: [
-                                                Icon(Icons.image_not_supported, size: 48, color: Colors.grey),
-                                                Text('图片加载失败'),
-                                              ],
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ),
-                              
-                              // 内容部分
-                              Padding(
-                                padding: EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      article.title,
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    SizedBox(height: 8),
-                                    ExpandableText(
-                                      text: article.content,
-                                      style: TextStyle(color: Colors.grey[600]),
-                                    ),
-                                    SizedBox(height: 12),
-                                    Row(
-                                      children: [
-                                        Icon(Icons.person, size: 16, color: Colors.grey),
-                                        SizedBox(width: 4),
-                                        Text(article.author, style: TextStyle(color: Colors.grey)),
-                                        Spacer(),
-                                        if (article.tags.isNotEmpty) ...[
-                                          Icon(Icons.label, size: 16, color: Colors.grey),
-                                          SizedBox(width: 4),
-                                          Text(article.tags.join(', '), style: TextStyle(color: Colors.grey)),
-                                        ],
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+                ),
+              ),
+              // 图片
+              topMonth['image_url'] != null
+                  ? Image.network(
+                      ApiService.buildImageUrl(topMonth['image_url']),
+                      width: double.infinity,
+                      height: 220,
+                      fit: BoxFit.cover,
+                    )
+                  : Container(
+                      width: double.infinity,
+                      height: 220,
+                      color: Colors.white.withOpacity(0.1),
+                      child: Icon(Icons.image_outlined, color: Colors.white.withOpacity(0.3), size: 40),
+                    ),
+              // 毛玻璃遮罩
+              BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                child: Container(
+                  width: double.infinity,
+                  height: 220,
+                  color: Colors.white.withOpacity(0.08),
+                ),
+              ),
+              // 渐变遮罩
+              Container(
+                width: double.infinity,
+                height: 220,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.82),
+                    ],
                   ),
                 ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => CreateArticleScreen()),
-          );
-        },
-        icon: Icon(Icons.add),
-        label: Text('发布诗篇'),
+              ),
+              // 内容
+              Positioned(
+                left: 18,
+                bottom: 32,
+                right: 18,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      topMonth['title'] ?? '',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withOpacity(0.7),
+                            offset: Offset(0, 2),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      topMonth['author'] ?? '',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.85),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w400,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withOpacity(0.4),
+                            offset: Offset(0, 1),
+                            blurRadius: 3,
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                      previewText,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.95),
+                        fontSize: 18,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withOpacity(0.5),
+                            offset: Offset(0, 1),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
-}
 
-// 可展开文本组件
-class ExpandableText extends StatefulWidget {
-  final String text;
-  final TextStyle? style;
-  final int maxLines;
-
-  const ExpandableText({
-    super.key,
-    required this.text,
-    this.style,
-    this.maxLines = 3,
-  });
-
-  @override
-  ExpandableTextState createState() => ExpandableTextState();
-}
-
-class ExpandableTextState extends State<ExpandableText> {
-  bool _expanded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    // 过滤特殊字符，解决Flutter Text渲染提前截断问题
-    final safeText = widget.text
-        .replaceAll('\u2028', '') // 行分隔符
-        .replaceAll('\u0000', '') // 空字符
-        .replaceAll('\r', '')     // 回车符
-        .replaceAll('\t', '  ')   // 制表符替换为两个空格
-        .replaceAll(RegExp(r'[\u0000-\u001F\u007F-\u009F]'), ''); // 其他控制字符
-    
-    return LayoutBuilder(builder: (context, size) {
-      final TextSpan textSpan = TextSpan(
-        text: safeText,
-        style: widget.style,
-      );
-
-      final TextPainter textPainter = TextPainter(
-        text: textSpan,
-        textDirection: TextDirection.ltr,
-        maxLines: widget.maxLines,
-      );
-      textPainter.layout(maxWidth: size.maxWidth);
-
-      if (textPainter.didExceedMaxLines) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 使用IgnorePointer包装SelectableText，允许点击事件传递到父级
-            IgnorePointer(
-              child: SelectableText(
-                safeText,
-                style: widget.style,
-                maxLines: _expanded ? null : widget.maxLines,
-                textWidthBasis: TextWidthBasis.parent,
-                enableInteractiveSelection: false,
+  Widget _buildWeekCard(BuildContext context, Map<String, dynamic> poem) {
+    String content = poem['content'] ?? '';
+    List<String> lines = content.split('\n');
+    String previewText = lines.take(3).join('\n');
+    return GestureDetector(
+      onTap: () {
+        try {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ArticleDetailScreen(
+                article: Article.fromJson(poem),
               ),
             ),
-            SizedBox(height: 4),
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  _expanded = !_expanded;
-                });
-              },
-              child: Text(
-                _expanded ? '收起' : '展开',
-                style: TextStyle(
-                  color: Theme.of(context).primaryColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+          );
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('打开文章失败: $e')),
+          );
+        }
+      },
+      child: Container(
+        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.16),
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.10),
+              blurRadius: 16,
+              offset: Offset(0, 4),
             ),
           ],
-        );
-      } else {
-        return IgnorePointer(
-          child: SelectableText(
-            safeText,
-            style: widget.style,
-            textWidthBasis: TextWidthBasis.parent,
-            enableInteractiveSelection: false,
+          border: Border.all(
+            color: Colors.white.withOpacity(0.18),
+            width: 1,
           ),
-        );
-      }
-    });
+        ),
+        child: ListTile(
+          contentPadding: EdgeInsets.all(14),
+          leading: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.13),
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: poem['image_url'] != null
+                  ? Image.network(
+                      ApiService.buildImageUrl(poem['image_url']),
+                      width: 56,
+                      height: 56,
+                      fit: BoxFit.cover,
+                    )
+                  : Container(
+                      width: 56,
+                      height: 56,
+                      color: Colors.white.withOpacity(0.1),
+                      child: Icon(Icons.image_outlined, color: Colors.white.withOpacity(0.3), size: 28),
+                    ),
+            ),
+          ),
+          title: Text(
+            poem['title'] ?? '',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 17,
+              shadows: [
+                Shadow(
+                  color: Colors.black.withOpacity(0.18),
+                  offset: Offset(0, 1),
+                  blurRadius: 2,
+                ),
+              ],
+            ),
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                poem['author'] ?? '',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.85),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                  shadows: [
+                    Shadow(
+                      color: Colors.black.withOpacity(0.13),
+                      offset: Offset(0, 1),
+                      blurRadius: 2,
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                previewText,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.92),
+                  fontSize: 14,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

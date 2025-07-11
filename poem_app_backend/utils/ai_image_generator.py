@@ -11,7 +11,7 @@ class AIImageGenerator:
     
     def __init__(self):
         # 使用免费的Stable Diffusion API - 使用更兼容的模型
-        self.api_url = "https://api.stability.ai/v1/generation/stable-diffusion-v1-5/text-to-image"
+        self.api_url = "https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image"
         self.api_key = os.getenv('STABILITY_API_KEY', '')  # 需要注册获取免费API key
         
         # 备用API - 使用免费的Hugging Face API

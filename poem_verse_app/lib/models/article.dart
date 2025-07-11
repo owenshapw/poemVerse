@@ -3,33 +3,36 @@ class Article {
   final String id;
   final String title;
   final String content;
+  final List<String> tags;
   final String author;
   final String imageUrl;
-  final List<String> tags;
   final String createdAt;
-  final String userId; // 添加用户ID字段
+  final String userId;
+  final int? likeCount;
 
   Article({
     required this.id,
     required this.title,
     required this.content,
+    required this.tags,
     required this.author,
     required this.imageUrl,
-    required this.tags,
     required this.createdAt,
-    required this.userId, // 添加用户ID参数
+    required this.userId,
+    this.likeCount,
   });
 
   factory Article.fromJson(Map<String, dynamic> json) {
     return Article(
-      id: json['id'],
-      title: json['title'],
-      content: json['content'],
-      author: json['author'] ?? '匿名',
-      imageUrl: json['image_url'] ?? '',
-      tags: List<String>.from(json['tags'] ?? []),
-      createdAt: json['created_at'] ?? '',
-      userId: json['user_id'] ?? '', // 从JSON中获取用户ID
+      id: json['id'] ?? '',
+      title: json['title'] ?? '',
+      content: json['content'] ?? '',
+      tags: (json['tags'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      author: json['author'] ?? '',
+      imageUrl: json['image_url'] ?? json['imageUrl'] ?? '',
+      createdAt: json['created_at'] ?? json['createdAt'] ?? '',
+      userId: json['user_id'] ?? json['userId'] ?? '',
+      likeCount: json['like_count'] ?? json['likeCount'],
     );
   }
 }

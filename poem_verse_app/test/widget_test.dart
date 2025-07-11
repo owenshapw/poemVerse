@@ -12,10 +12,10 @@ import 'package:poem_verse_app/main.dart';
 
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+    // 构建应用并触发一帧
+    await tester.pumpWidget(PoemVerseApp());
 
-    // Verify that our counter starts at 0.
+    // 验证计数器初始值为0
     expect(find.text('0'), findsOneWidget);
     expect(find.text('1'), findsNothing);
 

@@ -25,7 +25,6 @@ class AuthProvider with ChangeNotifier {
       
       return payloadMap['user_id'];
     } catch (e) {
-      print('解析用户ID失败: $e');
       return null;
     }
   }
@@ -36,23 +35,17 @@ class AuthProvider with ChangeNotifier {
 
     try {
       final response = await ApiService.login(email, password);
-      print('Login response status: ${response.statusCode}');
-      print('Login response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        _token = data['token']; // 改为 'token'
+      if (response.containsKey('token')) {
+        _token = response['token'];
         _isLoading = false;
         notifyListeners();
         return true;
       } else {
-        print('Login failed with status: ${response.statusCode}');
         _isLoading = false;
         notifyListeners();
         return false;
       }
     } catch (e) {
-      print('Login error: $e');
       _isLoading = false;
       notifyListeners();
       return false;
@@ -64,24 +57,18 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await ApiService.register(username, email, password);
-      print('Register response status: ${response.statusCode}');
-      print('Register response body: ${response.body}');
-
-      if (response.statusCode == 201) {
-        final data = json.decode(response.body);
-        _token = data['token']; // 保存注册后返回的token
+      final response = await ApiService.register(email, password, username);
+      if (response.containsKey('token')) {
+        _token = response['token'];
         _isLoading = false;
         notifyListeners();
         return true;
       } else {
-        print('Registration failed with status: ${response.statusCode}');
         _isLoading = false;
         notifyListeners();
         return false;
       }
     } catch (e) {
-      print('Registration error: $e');
       _isLoading = false;
       notifyListeners();
       return false;

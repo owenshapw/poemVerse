@@ -24,7 +24,7 @@ def create_app():
     })
     
     # 注册蓝图
-    app.register_blueprint(auth_bp, url_prefix='/api')
+    app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(articles_bp, url_prefix='/api')
     app.register_blueprint(comments_bp, url_prefix='/api')
     app.register_blueprint(generate_bp, url_prefix='/api')
@@ -46,4 +46,4 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(debug=True, host='0.0.0.0', port=5001) 
+    app.run(host='0.0.0.0', port=8080) 

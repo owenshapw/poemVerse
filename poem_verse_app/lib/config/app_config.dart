@@ -1,6 +1,5 @@
 // lib/config/app_config.dart
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'dart:io';
 
 class AppConfig {
@@ -9,17 +8,47 @@ class AppConfig {
     if (kDebugMode) {
       // 调试模式
       if (defaultTargetPlatform == TargetPlatform.iOS) {
-        // iOS真机使用本机IP地址
-        return 'http://192.168.14.18:5001';
+        // iOS真机必须用电脑的局域网IP
+        return 'http://192.168.14.18:8080';
       } else if (defaultTargetPlatform == TargetPlatform.android) {
         // Android模拟器使用10.0.2.2
-        return 'http://10.0.2.2:5001';
+        return 'http://10.0.2.2:8080';
       } else {
-        return 'http://localhost:5001';
+        return 'http://localhost:8080';
       }
     } else {
-      // 生产模式 - 使用实际的服务器地址
-      return 'http://your-production-server.com';
+      // 生产模式 - 也用本地IP，方便开发测试
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        return 'http://192.168.14.18:8080';
+      } else if (defaultTargetPlatform == TargetPlatform.android) {
+        return 'http://10.0.2.2:8080';
+      } else {
+        return 'http://localhost:8080';
+      }
+      // 正式生产时改为：return 'http://your-production-server.com';
+    }
+  }
+
+  // 备用URL配置，用于处理网络问题
+  static String get backupBackendBaseUrl {
+    if (kDebugMode) {
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        // iOS真机备用配置 - 依然用真实IP
+        return 'http://192.168.14.18:8080';
+      } else if (defaultTargetPlatform == TargetPlatform.android) {
+        return 'http://10.0.2.2:8080';
+      } else {
+        return 'http://127.0.0.1:8080';
+      }
+    } else {
+      // 生产模式备用配置
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        return 'http://192.168.14.18:8080';
+      } else if (defaultTargetPlatform == TargetPlatform.android) {
+        return 'http://10.0.2.2:8080';
+      } else {
+        return 'http://localhost:8080';
+      }
     }
   }
 
@@ -52,7 +81,7 @@ class AppConfig {
         }
       }
     } catch (e) {
-      print('获取IP地址失败: $e');
+      // 忽略网络接口获取错误，使用默认地址
     }
     return 'localhost';
   }
@@ -69,7 +98,7 @@ class AppConfig {
     if (defaultTargetPlatform == TargetPlatform.android || 
         defaultTargetPlatform == TargetPlatform.iOS) {
       final localIp = await getLocalIpAddress();
-      return 'http://$localIp:5001$imagePath';
+      return 'http://$localIp:8080$imagePath';
     }
     
     return buildImageUrl(imagePath);

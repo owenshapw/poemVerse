@@ -4,22 +4,37 @@ import 'package:provider/provider.dart';
 import 'package:poem_verse_app/providers/article_provider.dart';
 import 'package:poem_verse_app/providers/auth_provider.dart';
 import 'package:poem_verse_app/config/app_config.dart';
+import 'package:poem_verse_app/models/article.dart';
 
 class CreateArticleScreen extends StatefulWidget {
-  const CreateArticleScreen({super.key});
+  final Article? article;
+  final bool isEdit;
+  const CreateArticleScreen({super.key, this.article, this.isEdit = false});
 
   @override
-  _CreateArticleScreenState createState() => _CreateArticleScreenState();
+  CreateArticleScreenState createState() => CreateArticleScreenState();
 }
 
-class _CreateArticleScreenState extends State<CreateArticleScreen> {
+class CreateArticleScreenState extends State<CreateArticleScreen> {
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
   final _tagsController = TextEditingController();
-  List<String> _tags = [];
+  final List<String> _tags = [];
   String? _previewImageUrl;
   bool _isGeneratingPreview = false;
   bool _isCreating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isEdit && widget.article != null) {
+      _titleController.text = widget.article!.title;
+      _contentController.text = widget.article!.content;
+      _tags.clear();
+      _tags.addAll(widget.article!.tags);
+      _previewImageUrl = widget.article!.imageUrl;
+    }
+  }
 
   @override
   void dispose() {
@@ -52,26 +67,23 @@ class _CreateArticleScreenState extends State<CreateArticleScreen> {
       );
       return;
     }
-
     setState(() {
       _isGeneratingPreview = true;
     });
-
     final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    
+    final token = authProvider.token!;
+    final title = _titleController.text;
+    final content = _contentController.text;
+    final tags = List<String>.from(_tags);
     final previewUrl = await articleProvider.generatePreview(
-      authProvider.token!,
-      _titleController.text,
-      _contentController.text,
-      _tags,
+      token, title, content, tags,
     );
-
+    if (!mounted) return;
     setState(() {
       _previewImageUrl = previewUrl;
       _isGeneratingPreview = false;
     });
-
     if (previewUrl != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('预览图片生成成功！')),
@@ -83,45 +95,117 @@ class _CreateArticleScreenState extends State<CreateArticleScreen> {
     }
   }
 
+  void _regeneratePreview() async {
+    if (_titleController.text.isEmpty || _contentController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('请先填写标题和内容')),
+      );
+      return;
+    }
+    setState(() {
+      _isGeneratingPreview = true;
+    });
+    final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final token = authProvider.token!;
+    final title = _titleController.text;
+    final content = _contentController.text;
+    final tags = List<String>.from(_tags);
+    final previewUrl = await articleProvider.generatePreview(
+      token, title, content, tags,
+    );
+    if (!mounted) return;
+    setState(() {
+      _previewImageUrl = previewUrl;
+      _isGeneratingPreview = false;
+    });
+    if (previewUrl != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('预览图片重新生成成功！')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('预览图片重新生成失败')),
+      );
+    }
+  }
+
   String _buildImageUrl(String imageUrl) {
     return AppConfig.buildImageUrl(imageUrl);
   }
 
-  void _createArticle() async {
+  void _createOrUpdateArticle() async {
     if (_titleController.text.isEmpty || _contentController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('请填写标题和内容')),
       );
       return;
     }
-
     setState(() {
       _isCreating = true;
     });
-
-    final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     
-    await articleProvider.createArticle(
-      authProvider.token!,
-      _titleController.text,
-      _contentController.text,
-      _tags,
-      previewImageUrl: _previewImageUrl, // 传递预览图片URL
-    );
-
-    setState(() {
-      _isCreating = false;
-    });
-
-    Navigator.of(context).pop();
+    try {
+      final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final token = authProvider.token!;
+      final title = _titleController.text;
+      final content = _contentController.text;
+      final tags = List<String>.from(_tags);
+      final previewImageUrl = _previewImageUrl;
+      
+      print('开始发布文章...');
+      print('标题: $title');
+      print('预览图片URL: $previewImageUrl');
+      
+      if (widget.isEdit && widget.article != null) {
+        // 编辑模式，调用更新接口
+        print('编辑模式，文章ID: ${widget.article!.id}');
+        await articleProvider.updateArticle(
+          token, widget.article!.id, title, content, tags, previewImageUrl: previewImageUrl,
+        );
+        print('文章更新成功');
+        
+        // 刷新所有相关数据
+        await articleProvider.refreshAllData(token);
+      } else {
+        // 新建
+        print('新建模式');
+        await articleProvider.createArticle(
+          token, title, content, tags, previewImageUrl: previewImageUrl,
+        );
+        print('文章创建成功');
+        
+        // 刷新所有相关数据
+        await articleProvider.refreshAllData(token);
+      }
+      
+      if (!mounted) return;
+      setState(() {
+        _isCreating = false;
+      });
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      print('发布失败: $e');
+      if (!mounted) return;
+      setState(() {
+        _isCreating = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('发布失败: $e'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 5),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('发布诗篇'),
+        title: Text(widget.isEdit ? '编辑诗篇' : '发布诗篇'),
         actions: [
           if (_titleController.text.isNotEmpty && _contentController.text.isNotEmpty)
             IconButton(
@@ -219,6 +303,41 @@ class _CreateArticleScreenState extends State<CreateArticleScreen> {
                   ),
                 ),
               ),
+              SizedBox(height: 8),
+              // 重新生成按钮
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _isGeneratingPreview ? null : _regeneratePreview,
+                      icon: _isGeneratingPreview 
+                        ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        : Icon(Icons.refresh),
+                      label: Text(_isGeneratingPreview ? '重新生成中...' : '重新生成'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _previewImageUrl = null;
+                        });
+                      },
+                      icon: Icon(Icons.delete),
+                      label: Text('删除预览'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               SizedBox(height: 16),
             ],
             
@@ -241,7 +360,7 @@ class _CreateArticleScreenState extends State<CreateArticleScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: _isCreating ? null : _createArticle,
+                onPressed: _isCreating ? null : _createOrUpdateArticle,
                 icon: _isCreating 
                   ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                   : Icon(Icons.send),
