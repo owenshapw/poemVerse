@@ -15,7 +15,7 @@ EMAIL_PASSWORD=your-app-password
 
 # AI图片生成API密钥
 STABILITY_API_KEY=your-stability-ai-api-key
-HF_API_KEY=your-hugging-face-api-key
+HF_API_KEY=***_your-hf-key_***
 
 # 应用配置
 FLASK_ENV=development
