@@ -2,8 +2,6 @@ import os
 import time
 from qcloud_cos import CosConfig, CosS3Client
 from flask import current_app
-import sys
-import logging
 
 class COSClient:
     """腾讯云 COS 客户端"""
@@ -30,7 +28,7 @@ class COSClient:
                 Region=region,
                 SecretId=secret_id,
                 SecretKey=secret_key,
-                Timeout=60,  # 增加超时时间到60秒
+                Timeout=120,  # 增加超时时间到120秒
             )
             
             self.client = CosS3Client(config)
@@ -49,49 +47,38 @@ class COSClient:
             print(f"❌ COS 客户端初始化失败: {e}")
             self.client = None
     
-    def upload_file(self, file_data, filename, content_type='application/octet-stream', max_retries=3):
-        """上传文件到COS，带重试机制"""
-        if not self.is_available():
+    def upload_file(self, file_data, filename, content_type='application/octet-stream'):
+        """上传文件到COS"""
+        if not self.is_available() or self.client is None:
             print("❌ COS 不可用")
             return None
         
-        for attempt in range(max_retries):
-            try:
-                print(f"🔄 尝试上传文件到COS (第{attempt + 1}次): {filename}")
-                
-                # 构建对象键
-                object_key = f"poemverse/{filename}"
-                
-                # 上传文件
-                response = self.client.put_object(
-                    Bucket=self.bucket,
-                    Body=file_data,
-                    Key=object_key,
-                    StorageClass='STANDARD',
-                    EnableMD5=False,  # 禁用MD5以提高性能
-                    **{'Content-Type': content_type}
-                )
-                
-                # 构建腾讯云COS默认公网URL
-                public_url = f"https://{self.bucket}.cos.{self.region}.myqcloud.com/{object_key}"
-                print(f"✅ 文件上传成功: {public_url}")
-                return public_url
-                
-            except Exception as e:
-                print(f"❌ 第{attempt + 1}次上传失败: {e}")
-                if attempt < max_retries - 1:
-                    wait_time = (attempt + 1) * 2  # 递增等待时间
-                    print(f"⏳ 等待{wait_time}秒后重试...")
-                    time.sleep(wait_time)
-                else:
-                    print(f"❌ 文件上传失败，已重试{max_retries}次")
-                    return None
-        
-        return None
+        try:
+            print(f"🔄 上传文件到COS: {filename}")
+            
+            # 构建对象键
+            object_key = f"poemverse/{filename}"
+            
+            # 上传文件
+            response = self.client.put_object(
+                Bucket=self.bucket,
+                Body=file_data,
+                Key=object_key,
+                ContentType=content_type
+            )
+            
+            # 构建腾讯云COS默认公网URL
+            public_url = f"https://{self.bucket}.cos.{self.region}.myqcloud.com/{object_key}"
+            print(f"✅ 文件上传成功: {public_url}")
+            return public_url
+            
+        except Exception as e:
+            print(f"❌ 文件上传失败: {e}")
+            return None
     
     def delete_file(self, file_url):
         """删除文件"""
-        if not self.is_available():
+        if not self.is_available() or self.client is None:
             return False
             
         try:
@@ -116,7 +103,7 @@ class COSClient:
     
     def list_files(self, prefix='', max_keys=10):
         """列出文件"""
-        if not self.is_available():
+        if not self.is_available() or self.client is None:
             return []
         
         try:
