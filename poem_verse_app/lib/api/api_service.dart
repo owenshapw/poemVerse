@@ -65,10 +65,10 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> getMyArticles(String token) async {
+  static Future<Map<String, dynamic>> getMyArticles(String token, String userId) async {
     try {
       final response = await http.get(
-        Uri.parse('${AppConfig.backendApiUrl}/my-articles'),
+        Uri.parse('${AppConfig.backendApiUrl}/articles/user/$userId'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -128,11 +128,12 @@ class ApiService {
   }
 
   static Future<http.Response> createArticle(
-      String token, String title, String content, List<String> tags, {String? previewImageUrl}) async {
+      String token, String title, String content, List<String> tags, String author, {String? previewImageUrl}) async {
     final Map<String, dynamic> body = {
       'title': title,
       'content': content,
       'tags': tags,
+      'author': author,
     };
     
     // 如果提供了预览图片URL，添加到请求体中
@@ -164,7 +165,7 @@ class ApiService {
   }
 
   static Future<http.Response> generatePreview(
-      String token, String title, String content, List<String> tags) async {
+      String token, String title, String content, List<String> tags, String author) async {
     return await http.post(
       Uri.parse('${AppConfig.backendApiUrl}/generate/preview'),
       headers: {
@@ -175,6 +176,7 @@ class ApiService {
         'title': title,
         'content': content,
         'tags': tags,
+        'author': author,
       }),
     );
   }

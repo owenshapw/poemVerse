@@ -124,7 +124,7 @@ class CloudflareClient:
                     variants = image_info.get('variants', [])
                     if variants:
                         # 上传到public变体，但返回headphoto变体URL给APP端
-                        public_url = variants[1] if len(variants) > 1 else variants[0]  # headphoto 变体
+                        public_url = variants[0]  # 总是使用 public 变体
                         print(f"✅ 文件上传成功: {public_url}")
                         return public_url
                     else:

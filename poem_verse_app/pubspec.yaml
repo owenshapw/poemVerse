@@ -38,6 +38,7 @@ dependencies:
   provider: ^6.1.5
   flutter_dotenv: ^5.2.1
   share_plus: ^11.0.0
+  dio: ^5.5.0
 
 dev_dependencies:
   flutter_test:

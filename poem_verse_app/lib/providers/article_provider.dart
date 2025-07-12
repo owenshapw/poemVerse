@@ -29,11 +29,11 @@ class ArticleProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> createArticle(String token, String title, String content, List<String> tags, {String? previewImageUrl}) async {
+  Future<void> createArticle(String token, String title, String content, List<String> tags, String author, {String? previewImageUrl}) async {
     _isLoading = true;
     notifyListeners();
 
-    final response = await ApiService.createArticle(token, title, content, tags, previewImageUrl: previewImageUrl);
+    final response = await ApiService.createArticle(token, title, content, tags, author, previewImageUrl: previewImageUrl);
 
     if (response.statusCode == 201) {
       // Article created successfully, refresh the list
@@ -57,8 +57,8 @@ class ArticleProvider with ChangeNotifier {
     }
   }
 
-  Future<String?> generatePreview(String token, String title, String content, List<String> tags) async {
-    final response = await ApiService.generatePreview(token, title, content, tags);
+  Future<String?> generatePreview(String token, String title, String content, List<String> tags, String author) async {
+    final response = await ApiService.generatePreview(token, title, content, tags, author);
     
     if (response.statusCode == 200) {
       final Map<String, dynamic> data = json.decode(response.body);
@@ -68,7 +68,7 @@ class ArticleProvider with ChangeNotifier {
     }
   }
 
-  Future<void> updateArticle(String token, String articleId, String title, String content, List<String> tags, {String? previewImageUrl}) async {
+  Future<void> updateArticle(String token, String articleId, String title, String content, List<String> tags, String author, {String? previewImageUrl}) async {
     final url = Uri.parse('${ApiService.baseUrl}/articles/$articleId');
     final headers = {
       'Authorization': 'Bearer $token',
@@ -78,6 +78,7 @@ class ArticleProvider with ChangeNotifier {
       'title': title,
       'content': content,
       'tags': tags,
+      'author': author,
       'preview_image_url': previewImageUrl,
     };
     final response = await ApiService.put(url, headers: headers, body: body);

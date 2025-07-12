@@ -5,6 +5,7 @@ import 'package:poem_verse_app/providers/article_provider.dart';
 import 'package:poem_verse_app/providers/auth_provider.dart';
 import 'package:poem_verse_app/config/app_config.dart';
 import 'package:poem_verse_app/models/article.dart';
+import 'package:poem_verse_app/widgets/network_image_with_dio.dart';
 
 class CreateArticleScreen extends StatefulWidget {
   final Article? article;
@@ -76,8 +77,9 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
     final title = _titleController.text;
     final content = _contentController.text;
     final tags = List<String>.from(_tags);
+    final author = authProvider.username ?? '佚名';
     final previewUrl = await articleProvider.generatePreview(
-      token, title, content, tags,
+      token, title, content, tags, author,
     );
     if (!mounted) return;
     setState(() {
@@ -111,8 +113,9 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
     final title = _titleController.text;
     final content = _contentController.text;
     final tags = List<String>.from(_tags);
+    final author = authProvider.username ?? '佚名';
     final previewUrl = await articleProvider.generatePreview(
-      token, title, content, tags,
+      token, title, content, tags, author,
     );
     if (!mounted) return;
     setState(() {
@@ -125,7 +128,7 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('预览图片重新生成失败')),
+        SnackBar(content: Text('预览图片重新生成失���')),
       );
     }
   }
@@ -154,6 +157,7 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
       if (token == null) {
         throw Exception('用户未登录或登录已过期，请重新登录');
       }
+      final author = authProvider.username ?? '佚名';
 
       final title = _titleController.text;
       final content = _contentController.text;
@@ -164,7 +168,7 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
       if (widget.isEdit && widget.article != null) {
         // 编辑模式，调用更新接口
         await articleProvider.updateArticle(
-          token, widget.article!.id, title, content, tags, previewImageUrl: previewImageUrl,
+          token, widget.article!.id, title, content, tags, author, previewImageUrl: previewImageUrl,
         );
         
         // 刷新所有相关数据
@@ -172,7 +176,7 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
       } else {
         // 新建
         await articleProvider.createArticle(
-          token, title, content, tags, previewImageUrl: previewImageUrl,
+          token, title, content, tags, author, previewImageUrl: previewImageUrl,
         );
         
         // 刷新所有相关数据
@@ -284,39 +288,9 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    _buildImageUrl(_previewImageUrl!),
+                  child: NetworkImageWithDio(
+                    imageUrl: _buildImageUrl(_previewImageUrl!),
                     fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CircularProgressIndicator(
-                              value: loadingProgress.expectedTotalBytes != null
-                                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                  : null,
-                            ),
-                            SizedBox(height: 8),
-                            Text('加载预览图片中...'),
-                          ],
-                        ),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.error, color: Colors.red, size: 48),
-                            Text('图片加载失败'),
-                            SizedBox(height: 4),
-                            Text('网络连接问题', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                          ],
-                        ),
-                      );
-                    },
                   ),
                 ),
               ),

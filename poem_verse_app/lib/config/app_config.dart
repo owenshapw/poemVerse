@@ -4,65 +4,14 @@ import 'dart:io';
 
 class AppConfig {
   static String get backendBaseUrl {
-    // 临时使用本地开发环境
-    if (kDebugMode) {
-      // 调试模式 - 使用本地开发服务器
-      if (defaultTargetPlatform == TargetPlatform.iOS) {
-        // iOS真机必须用电脑的局域网IP
-        return 'http://192.168.14.18:8080';
-      } else if (defaultTargetPlatform == TargetPlatform.android) {
-        // Android模拟器使用10.0.2.2
-        return 'http://10.0.2.2:8080';
-      } else {
-        return 'http://localhost:8080';
-      }
-    } else {
-      // 生产模式 - 使用部署在Render上的服务
-      return 'https://poemverse.onrender.com';
-    }
-    
-    // 如果需要本地调试，可以临时注释上面的行，取消注释下面的代码
-    /*
-    // 根据运行环境返回不同的URL
-    if (kDebugMode) {
-      // 调试模式 - 使用本地开发服务器
-      if (defaultTargetPlatform == TargetPlatform.iOS) {
-        // iOS真机必须用电脑的局域网IP
-        return 'http://192.168.14.18:8080';
-      } else if (defaultTargetPlatform == TargetPlatform.android) {
-        // Android模拟器使用10.0.2.2
-        return 'http://10.0.2.2:8080';
-      } else {
-        return 'http://localhost:8080';
-      }
-    } else {
-      // 生产模式 - 使用部署在Render上的服务
-      return 'https://poemverse.onrender.com';
-    }
-    */
+    // 生产模式 - 使用部署在Render上的服务
+    return 'https://poemverse.onrender.com';
   }
 
   // 备用URL配置，用于处理网络问题
   static String get backupBackendBaseUrl {
     // 备用也使用生产环境
     return 'https://poemverse.onrender.com';
-    
-    // 如果需要本地调试，可以临时注释上面的行，取消注释下面的代码
-    /*
-    if (kDebugMode) {
-      // 调试模式备用配置
-      if (defaultTargetPlatform == TargetPlatform.iOS) {
-        return 'http://192.168.14.18:8080';
-      } else if (defaultTargetPlatform == TargetPlatform.android) {
-        return 'http://10.0.2.2:8080';
-      } else {
-        return 'http://127.0.0.1:8080';
-      }
-    } else {
-      // 生产模式备用配置 - 也使用生产服务器
-      return 'https://poemverse.onrender.com';
-    }
-    */
   }
 
   static String get backendApiUrl {

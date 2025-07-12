@@ -5,9 +5,12 @@ import 'package:poem_verse_app/api/api_service.dart';
 
 class AuthProvider with ChangeNotifier {
   String? _token;
+  Map<String, dynamic>? _user;
   bool _isLoading = false;
 
   String? get token => _token;
+  Map<String, dynamic>? get user => _user;
+  String? get username => _user?['username'];
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _token != null;
   
@@ -36,6 +39,7 @@ class AuthProvider with ChangeNotifier {
       final response = await ApiService.login(email, password);
       if (response.containsKey('token')) {
         _token = response['token'];
+        _user = response['user'];
         return true;
       }
       return false;
@@ -54,6 +58,7 @@ class AuthProvider with ChangeNotifier {
       final response = await ApiService.register(email, password, username);
       if (response.containsKey('token')) {
         _token = response['token'];
+        _user = response['user'];
         return true;
       }
       return false;

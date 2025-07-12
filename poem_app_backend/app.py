@@ -41,8 +41,7 @@ def create_app():
             "allow_headers": ["Content-Type", "Authorization"]
         }
     })
-    
-    # 注册蓝图
+
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(articles_bp, url_prefix='/api')
     app.register_blueprint(comments_bp, url_prefix='/api')

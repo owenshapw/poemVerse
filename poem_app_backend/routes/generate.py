@@ -3,6 +3,7 @@ from models.supabase_client import supabase_client
 from utils.ai_image_generator import ai_generator
 import jwt
 from functools import wraps
+import uuid
 
 generate_bp = Blueprint('generate', __name__)
 
@@ -96,6 +97,7 @@ def generate_preview(current_user_id):
         
         # 创建临时文章对象
         temp_article = {
+            'id': str(uuid.uuid4()),
             'title': title,
             'content': content,
             'author': author,
