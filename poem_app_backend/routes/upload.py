@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from models.supabase_client import supabase_client
-from utils.cos_client import cos_client  # 导入 COS 客户端
+from utils.cloudflare_client import cloudflare_client  # 导入 Cloudflare 客户端
+import os # 导入 os 模块
 
 upload_bp = Blueprint('upload', __name__)
 
@@ -18,22 +19,39 @@ def upload_image():
     
     file_data = file.read()
     
-    # 优先使用腾讯云 COS
-    if cos_client.is_available():
-        print("使用腾讯云 COS 上传文件")
+    # 优先使用 Cloudflare Images
+    if cloudflare_client.is_available():
+        print("使用 Cloudflare Images 上传文件")
         content_type = file.content_type or 'application/octet-stream'
-        public_url = cos_client.upload_file(
+        public_url = cloudflare_client.upload_file(
             file_data,
             filename,
             content_type
         )
     else:
-        print("COS 不可用，回退到 Supabase")
+        print("Cloudflare Images 不可用，回退到 Supabase")
         # 回退到 Supabase
         bucket = "images"
         # 检查 supabase_client 是否初始化
         if not supabase_client.supabase:
-            return jsonify({'error': 'Supabase client 未初始化'}), 500
+            print("⚠️ Supabase 客户端未初始化，尝试重新初始化...")
+            try:
+                from supabase.client import create_client
+                supabase_url = os.getenv("SUPABASE_URL")
+                supabase_key = os.getenv("SUPABASE_KEY")
+                if supabase_url and supabase_key:
+                    supabase_client.supabase = create_client(supabase_url, supabase_key)
+                    print("✅ Supabase 客户端重新初始化成功")
+                else:
+                    return jsonify({'error': 'Supabase 环境变量未配置'}), 500
+            except Exception as e:
+                print(f"❌ Supabase 客户端重新初始化失败: {e}")
+                return jsonify({'error': 'Supabase 客户端初始化失败'}), 500
+        
+        # 再次检查客户端是否可用
+        if not supabase_client.supabase:
+            return jsonify({'error': 'Supabase 客户端仍然不可用'}), 500
+            
         storage = supabase_client.supabase.storage
         content_type = file.content_type or 'application/octet-stream'
         res = storage.from_(bucket).upload(filename, file_data, {"content-type": content_type})

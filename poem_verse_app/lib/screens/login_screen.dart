@@ -30,21 +30,25 @@ class LoginScreenState extends State<LoginScreen> {
         final authProvider = Provider.of<AuthProvider>(context, listen: false);
         final success = await authProvider.login(_emailController.text, _passwordController.text);
         
-        if (success) {
+        if (success && mounted) {
           // 登录成功，跳转到我的诗篇页面
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => MyArticlesScreen()),
           );
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('登录失败，请检查邮箱和密码')),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('登录失败，请检查邮箱和密码')),
+            );
+          }
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('登录失败: $e')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('登录失败: $e')),
+          );
+        }
       } finally {
         setState(() {
           _isLoading = false;

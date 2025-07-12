@@ -11,7 +11,7 @@ import 'package:poem_verse_app/screens/create_article_screen.dart'; // Added imp
 class ArticleDetailScreen extends StatefulWidget {
   final Article article;
 
-  ArticleDetailScreen({super.key, required this.article});
+  const ArticleDetailScreen({super.key, required this.article});
 
   @override
   State<ArticleDetailScreen> createState() => _ArticleDetailScreenState();
@@ -30,7 +30,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   // 检查是否为文章作者
   bool _isAuthor(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    print('[DEBUG] 当前登录userId: \'${authProvider.userId}\', 文章userId: \'${_article.userId}\'');
     return authProvider.userId == _article.userId;
   }
 
@@ -67,26 +66,32 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     );
     if (confirmed == true) {
       try {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (BuildContext context) {
-            return Center(child: CircularProgressIndicator());
-          },
-        );
+        if (mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext context) {
+              return Center(child: CircularProgressIndicator());
+            },
+          );
+        }
         await articleProvider.deleteArticle(token, articleId);
         if (!mounted) return;
-        Navigator.of(context, rootNavigator: true).pop(); // 关闭 Dialog
-        scaffoldMessenger.showSnackBar(
-          SnackBar(content: Text('诗篇删除成功'), backgroundColor: Colors.green),
-        );
-        navigator.pop();
+        if (mounted) {
+          Navigator.of(context, rootNavigator: true).pop(); // 关闭 Dialog
+          scaffoldMessenger.showSnackBar(
+            SnackBar(content: Text('诗篇删除成功'), backgroundColor: Colors.green),
+          );
+          navigator.pop();
+        }
       } catch (e) {
         if (!mounted) return;
-        navigator.pop();
-        scaffoldMessenger.showSnackBar(
-          SnackBar(content: Text('删除失败：${e.toString()}'), backgroundColor: Colors.red),
-        );
+        if (mounted) {
+          navigator.pop();
+          scaffoldMessenger.showSnackBar(
+            SnackBar(content: Text('删除失败：${e.toString()}'), backgroundColor: Colors.red),
+          );
+        }
       }
     }
   }
@@ -122,8 +127,7 @@ ${_article.tags.isNotEmpty ? '标签：${_article.tags.join('、')}' : ''}
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    print('[DEBUG] build: 当前登录userId: \'${authProvider.userId}\', 文章userId: \'${_article.userId}\'');
+    Provider.of<AuthProvider>(context, listen: false);
     return Scaffold(
       appBar: AppBar(
         title: Text('诗篇详情'),
@@ -133,6 +137,7 @@ ${_article.tags.isNotEmpty ? '标签：${_article.tags.join('、')}' : ''}
               icon: Icon(Icons.edit_outlined),
               tooltip: '编辑',
               onPressed: () async {
+                if (!mounted) return;
                 final updated = await Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -142,7 +147,7 @@ ${_article.tags.isNotEmpty ? '标签：${_article.tags.join('、')}' : ''}
                     ),
                   ),
                 );
-                if (updated == true) {
+                if (updated == true && mounted) {
                   await _refreshArticle();
                 }
               },
@@ -181,6 +186,26 @@ ${_article.tags.isNotEmpty ? '标签：${_article.tags.join('、')}' : ''}
                           children: [
                             Icon(Icons.image_not_supported, size: 64, color: Colors.grey),
                             Text('图片加载失败'),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      color: Colors.grey[200],
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                  : null,
+                            ),
+                            SizedBox(height: 16),
+                            Text('加载中...'),
                           ],
                         ),
                       ),
@@ -274,7 +299,7 @@ ${_article.tags.isNotEmpty ? '标签：${_article.tags.join('、')}' : ''}
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () {
-                            // TODO: 实现点赞功能
+                            // 点赞功能 - 暂时显示提示
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text('点赞功能开发中...')),
                             );

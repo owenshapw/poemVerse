@@ -18,7 +18,6 @@ class ApiService {
     // 尝试主URL
     try {
       final url = '${AppConfig.backendApiUrl}/articles/home';
-      print('🔍 正在请求主URL: $url');
       
       final response = await http.get(
         Uri.parse(url),
@@ -30,26 +29,19 @@ class ApiService {
         },
       );
 
-      print('📡 主URL响应状态码: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        print('✅ 主URL请求成功');
         return json.decode(response.body);
       } else if (response.statusCode == 418) {
-        print('⚠️ 主URL返回418错误，尝试备用URL');
         throw Exception('418 error, trying backup URL');
       } else {
-        print('❌ 主URL请求失败: ${response.statusCode}');
-        print('❌ 响应体: ${response.body}');
         throw Exception('Failed to load home articles: ${response.statusCode}');
       }
     } catch (e) {
-      print('💥 主URL网络错误: $e');
       
       // 如果是418错误或其他网络错误，尝试备用URL
       try {
         final backupUrl = '${AppConfig.backupBackendBaseUrl}/api/articles/home';
-        print('🔄 尝试备用URL: $backupUrl');
         
         final backupResponse = await http.get(
           Uri.parse(backupUrl),
@@ -61,18 +53,13 @@ class ApiService {
           },
         );
 
-        print('📡 备用URL响应状态码: ${backupResponse.statusCode}');
 
         if (backupResponse.statusCode == 200) {
-          print('✅ 备用URL请求成功');
           return json.decode(backupResponse.body);
         } else {
-          print('❌ 备用URL也失败: ${backupResponse.statusCode}');
-          print('❌ 响应体: ${backupResponse.body}');
           throw Exception('Both URLs failed: ${backupResponse.statusCode}');
         }
       } catch (backupError) {
-        print('💥 备用URL也失败: $backupError');
         throw Exception('Failed to load home articles: $e -> $backupError');
       }
     }
@@ -94,7 +81,6 @@ class ApiService {
         throw Exception('Failed to load my articles: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error fetching my articles: $e');
       throw Exception('Failed to load my articles: $e');
     }
   }

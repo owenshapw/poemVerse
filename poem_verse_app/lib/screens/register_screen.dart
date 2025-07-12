@@ -33,12 +33,12 @@ class RegisterScreenState extends State<RegisterScreen> {
     final success = await authProvider.register(username, email, password);
     
     if (!mounted) return;
-    if (success) {
+    if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('注册成功！')),
       );
       Navigator.of(context).pop();
-    } else {
+    } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('注册失败，请重试')),
       );

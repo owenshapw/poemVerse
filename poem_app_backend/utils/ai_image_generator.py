@@ -7,7 +7,7 @@ import uuid
 from flask import current_app
 from models.supabase_client import supabase_client
 from supabase.client import create_client  # 正确导入
-from utils.cos_client import cos_client  # 导入 COS 客户端
+from utils.cloudflare_client import cloudflare_client  # 导入 Cloudflare 客户端
 
 class AIImageGenerator:
     """AI图片生成器"""
@@ -171,6 +171,26 @@ class AIImageGenerator:
         
         return None
     
+    def _ensure_supabase_initialized(self):
+        """确保 Supabase 客户端已初始化"""
+        try:
+            if supabase_client.supabase is None:
+                print("⚠️ Supabase 客户端未初始化，尝试重新初始化...")
+                # 尝试从环境变量重新初始化
+                supabase_url = os.getenv('SUPABASE_URL')
+                supabase_key = os.getenv('SUPABASE_KEY')
+                
+                if supabase_url and supabase_key:
+                    supabase_client.supabase = create_client(supabase_url, supabase_key)
+                    print("✅ Supabase 客户端重新初始化成功")
+                else:
+                    print("❌ 无法重新初始化 Supabase 客户端：环境变量缺失")
+                    return False
+            return True
+        except Exception as e:
+            print(f"❌ Supabase 客户端重新初始化失败: {e}")
+            return False
+    
     def generate_poem_image(self, article, user_token=None):
         """为诗词生成AI图片，并上传到腾讯云 COS"""
         try:
@@ -195,20 +215,27 @@ class AIImageGenerator:
                 filename = f"ai_generated_{uuid.uuid4().hex}.png"
                 
                 # 优先使用腾讯云 COS
-                if cos_client.is_available():
-                    print("使用腾讯云 COS 上传图片")
-                    public_url = cos_client.upload_file(
+                if cloudflare_client.is_available():
+                    print("使用 Cloudflare Images 上传图片")
+                    public_url = cloudflare_client.upload_file(
                         image_data.getvalue(),
                         filename,
                         'image/png'
                     )
                 else:
-                    print("COS 不可用，回退到 Supabase")
+                    print("Cloudflare Images 不可用，回退到 Supabase")
                     # 回退到 Supabase
                     bucket = "images"
                     
-                    if not supabase_client.supabase:
-                        raise RuntimeError("Supabase client 未初始化")
+                    # 确保 Supabase 客户端已初始化
+                    if not self._ensure_supabase_initialized():
+                        print("❌ Supabase 客户端初始化失败，无法上传图片")
+                        return None
+                    
+                    # 再次检查 supabase 客户端是否可用
+                    if supabase_client.supabase is None:
+                        print("❌ Supabase 客户端仍然不可用")
+                        return None
                     
                     storage_client = supabase_client.supabase.storage
                     

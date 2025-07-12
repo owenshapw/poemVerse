@@ -166,7 +166,12 @@ def generate_preview(current_user_id):
         # 如果AI生成失败，回退到文字排版
         if not image_url:
             print("AI预览图片生成失败，使用文字排版")
-            image_url = generate_article_image(temp_article, is_preview=True, user_token=token)
+            try:
+                image_url = generate_article_image(temp_article, is_preview=True, user_token=token)
+            except Exception as e:
+                print(f"文字排版生成失败: {e}")
+                # 如果文字排版也失败，返回错误
+                return jsonify({'error': f'预览图片生成失败: {str(e)}'}), 500
             
         if not image_url:
             return jsonify({'error': '预览图片生成失败'}), 500

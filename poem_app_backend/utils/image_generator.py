@@ -6,7 +6,7 @@ import requests
 from io import BytesIO
 import random
 from models.supabase_client import supabase_client
-from utils.cos_client import cos_client  # 导入 COS 客户端
+from utils.cloudflare_client import cloudflare_client  # 导入 Cloudflare 客户端
 import io
 
 def generate_article_image(article, is_preview=False, user_token=None):
@@ -192,16 +192,16 @@ def generate_article_image(article, is_preview=False, user_token=None):
     else:
         filename = f"article_{uuid.uuid4().hex}.png"
     
-    # 优先使用腾讯云 COS
-    if cos_client.is_available():
-        print("使用腾讯云 COS 上传图片")
-        public_url = cos_client.upload_file(
+    # 优先使用 Cloudflare Images
+    if cloudflare_client.is_available():
+        print("使用 Cloudflare Images 上传图片")
+        public_url = cloudflare_client.upload_file(
             buffer.read(),
             filename,
             'image/png'
         )
     else:
-        print("COS 不可用，回退到 Supabase")
+        print("Cloudflare Images 不可用，回退到 Supabase")
         # 回退到 Supabase
         bucket_name = "images"
         from supabase.client import create_client
@@ -209,11 +209,25 @@ def generate_article_image(article, is_preview=False, user_token=None):
         supabase_key = os.getenv("SUPABASE_KEY")
         if not supabase_url or not supabase_key:
             raise ValueError("SUPABASE_URL 或 SUPABASE_KEY 未设置")
-        supabase_cli = create_client(supabase_url, supabase_key)
-        storage_client = supabase_cli.storage
+        
+        # 确保 Supabase 客户端已初始化
+        if supabase_client.supabase is None:
+            print("⚠️ Supabase 客户端未初始化，尝试重新初始化...")
+            try:
+                supabase_client.supabase = create_client(supabase_url, supabase_key)
+                print("✅ Supabase 客户端重新初始化成功")
+            except Exception as e:
+                print(f"❌ Supabase 客户端重新初始化失败: {e}")
+                raise RuntimeError("Supabase 客户端初始化失败")
+        
+        # 再次检查客户端是否可用
+        if supabase_client.supabase is None:
+            raise RuntimeError("Supabase 客户端仍然不可用")
+        
+        storage_client = supabase_client.supabase.storage
         if user_token:
-            supabase_cli.auth.set_session(access_token=user_token, refresh_token=user_token)
-            storage_client = supabase_cli.storage
+            supabase_client.supabase.auth.set_session(access_token=user_token, refresh_token=user_token)
+            storage_client = supabase_client.supabase.storage
         # 仅传 path 和 file，去掉 content_type 和 upsert 参数
         storage_client.from_(bucket_name).upload(
             path=filename,

@@ -1,6 +1,5 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'package:poem_verse_app/providers/auth_provider.dart';
 import 'package:poem_verse_app/providers/article_provider.dart';

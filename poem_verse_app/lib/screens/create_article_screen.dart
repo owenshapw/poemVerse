@@ -160,27 +160,20 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
       final tags = List<String>.from(_tags);
       final previewImageUrl = _previewImageUrl;
       
-      print('开始发布文章...');
-      print('标题: $title');
-      print('预览图片URL: $previewImageUrl');
       
       if (widget.isEdit && widget.article != null) {
         // 编辑模式，调用更新接口
-        print('编辑模��，文章ID: ${widget.article!.id}');
         await articleProvider.updateArticle(
           token, widget.article!.id, title, content, tags, previewImageUrl: previewImageUrl,
         );
-        print('文章更新成功');
         
         // 刷新所有相关数据
         await articleProvider.refreshAllData(token);
       } else {
         // 新建
-        print('新建模式');
         await articleProvider.createArticle(
           token, title, content, tags, previewImageUrl: previewImageUrl,
         );
-        print('文章创建成功');
         
         // 刷新所有相关数据
         await articleProvider.refreshAllData(token);
@@ -192,7 +185,6 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
       });
       Navigator.of(context).pop(true);
     } catch (e) {
-      print('发布失败: $e');
       if (!mounted) return;
       setState(() {
         _isCreating = false;
@@ -295,6 +287,23 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
                   child: Image.network(
                     _buildImageUrl(_previewImageUrl!),
                     fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                  : null,
+                            ),
+                            SizedBox(height: 8),
+                            Text('加载预览图片中...'),
+                          ],
+                        ),
+                      );
+                    },
                     errorBuilder: (context, error, stackTrace) {
                       return Center(
                         child: Column(
@@ -302,6 +311,8 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
                           children: [
                             Icon(Icons.error, color: Colors.red, size: 48),
                             Text('图片加载失败'),
+                            SizedBox(height: 4),
+                            Text('网络连接问题', style: TextStyle(fontSize: 12, color: Colors.grey)),
                           ],
                         ),
                       );

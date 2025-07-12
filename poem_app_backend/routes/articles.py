@@ -278,7 +278,24 @@ def get_home_articles():
     """
     try:
         if supabase_client.supabase is None:
-            return jsonify({'error': 'Supabase client 未初始化'}), 500
+            print("⚠️ Supabase 客户端未初始化，尝试重新初始化...")
+            try:
+                from supabase.client import create_client
+                import os
+                supabase_url = os.getenv("SUPABASE_URL")
+                supabase_key = os.getenv("SUPABASE_KEY")
+                if supabase_url and supabase_key:
+                    supabase_client.supabase = create_client(supabase_url, supabase_key)
+                    print("✅ Supabase 客户端重新初始化成功")
+                else:
+                    return jsonify({'error': 'Supabase 环境变量未配置'}), 500
+            except Exception as e:
+                print(f"❌ Supabase 客户端重新初始化失败: {e}")
+                return jsonify({'error': 'Supabase 客户端初始化失败'}), 500
+        
+        # 再次检查客户端是否可用
+        if supabase_client.supabase is None:
+            return jsonify({'error': 'Supabase 客户端仍然不可用'}), 500
         
         print("开始查询首页数据...")
         now = datetime.utcnow()

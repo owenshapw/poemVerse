@@ -7,7 +7,7 @@ from routes.comments import comments_bp
 from routes.generate import generate_bp
 from models.supabase_client import supabase_client
 from routes.upload import upload_bp
-from routes.cos import cos_bp
+from routes.cloudflare import cloudflare_bp
 import os
 
 from dotenv import load_dotenv
@@ -39,7 +39,7 @@ def create_app():
     app.register_blueprint(comments_bp, url_prefix='/api')
     app.register_blueprint(generate_bp, url_prefix='/api')
     app.register_blueprint(upload_bp)
-    app.register_blueprint(cos_bp)
+    app.register_blueprint(cloudflare_bp)
     
     @app.route('/')
     def index():

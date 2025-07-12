@@ -147,10 +147,12 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: Icon(Icons.person_outline, color: Colors.white, size: 28),
               tooltip: '登录',
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => LoginScreen()),
-                );
+                if (mounted) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => LoginScreen()),
+                  );
+                }
               },
             ),
           ),
@@ -165,6 +167,7 @@ class _HomeScreenState extends State<HomeScreen> {
     String previewText = lines.take(3).join('\n');
     return GestureDetector(
       onTap: () {
+        if (!mounted) return;
         try {
           Navigator.push(
             context,
@@ -176,9 +179,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 } catch (e) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('数据解析失败: $e')),
-                    );
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('数据解析失败: $e')),
+                      );
+                    }
                   });
                   // 返回一个空页面防止崩溃
                   return Scaffold(
@@ -190,9 +195,11 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           );
         } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('打开文章失败: $e')),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('打开文章失败: $e')),
+            );
+          }
         }
       },
       child: Container(
@@ -238,6 +245,30 @@ class _HomeScreenState extends State<HomeScreen> {
                       width: double.infinity,
                       height: 220,
                       fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: double.infinity,
+                          height: 220,
+                          color: Colors.white.withAlpha(25),
+                          child: Icon(Icons.image_not_supported, color: Colors.white.withAlpha(77), size: 40),
+                        );
+                      },
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          width: double.infinity,
+                          height: 220,
+                          color: Colors.white.withAlpha(25),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                  : null,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white.withAlpha(77)),
+                            ),
+                          ),
+                        );
+                      },
                     )
                   : Container(
                       width: double.infinity,
@@ -394,6 +425,35 @@ class _HomeScreenState extends State<HomeScreen> {
                       width: 56,
                       height: 56,
                       fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 56,
+                          height: 56,
+                          color: Colors.white.withAlpha(25),
+                          child: Icon(Icons.image_not_supported, color: Colors.white.withAlpha(77), size: 28),
+                        );
+                      },
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          width: 56,
+                          height: 56,
+                          color: Colors.white.withAlpha(25),
+                          child: Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes != null
+                                    ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                    : null,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white.withAlpha(77)),
+                                strokeWidth: 2,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     )
                   : Container(
                       width: 56,
