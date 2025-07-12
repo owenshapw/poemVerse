@@ -6,6 +6,7 @@ import requests
 from io import BytesIO
 import random
 from models.supabase_client import supabase_client
+from utils.cos_client import cos_client  # 导入 COS 客户端
 import io
 
 def generate_article_image(article, is_preview=False, user_token=None):
@@ -184,30 +185,44 @@ def generate_article_image(article, is_preview=False, user_token=None):
     buffer = io.BytesIO()
     image.save(buffer, format='PNG', quality=95)
     buffer.seek(0)
-    # 定义文件名和存储桶
+    
+    # 定义文件名
     if is_preview:
         filename = f"preview_{uuid.uuid4().hex}.png"
     else:
         filename = f"article_{uuid.uuid4().hex}.png"
-    bucket_name = "images"
-    # 根据是否有token，决定使用哪个supabase客户端实例
-    from supabase.client import create_client
-    supabase_url = os.getenv("SUPABASE_URL")
-    supabase_key = os.getenv("SUPABASE_KEY")
-    if not supabase_url or not supabase_key:
-        raise ValueError("SUPABASE_URL 或 SUPABASE_KEY 未设置")
-    supabase_cli = create_client(supabase_url, supabase_key)
-    storage_client = supabase_cli.storage
-    if user_token:
-        supabase_cli.auth.set_session(access_token=user_token, refresh_token=user_token)
+    
+    # 优先使用腾讯云 COS
+    if cos_client.is_available():
+        print("使用腾讯云 COS 上传图片")
+        public_url = cos_client.upload_file(
+            buffer.read(),
+            filename,
+            'image/png'
+        )
+    else:
+        print("COS 不可用，回退到 Supabase")
+        # 回退到 Supabase
+        bucket_name = "images"
+        from supabase.client import create_client
+        supabase_url = os.getenv("SUPABASE_URL")
+        supabase_key = os.getenv("SUPABASE_KEY")
+        if not supabase_url or not supabase_key:
+            raise ValueError("SUPABASE_URL 或 SUPABASE_KEY 未设置")
+        supabase_cli = create_client(supabase_url, supabase_key)
         storage_client = supabase_cli.storage
-    # 仅传 path 和 file，去掉 content_type 和 upsert 参数
-    storage_client.from_(bucket_name).upload(
-        path=filename,
-        file=buffer.read()
-    )
-    # 获取公开URL
-    public_url = storage_client.from_(bucket_name).get_public_url(filename)
+        if user_token:
+            supabase_cli.auth.set_session(access_token=user_token, refresh_token=user_token)
+            storage_client = supabase_cli.storage
+        # 仅传 path 和 file，去掉 content_type 和 upsert 参数
+        storage_client.from_(bucket_name).upload(
+            path=filename,
+            file=buffer.read(),
+            file_options={"content-type": "image/png"}
+        )
+        # 获取公开URL
+        public_url = storage_client.from_(bucket_name).get_public_url(filename)
+    
     return public_url
 
 def generate_background_image():

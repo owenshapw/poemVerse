@@ -7,6 +7,7 @@ import uuid
 from flask import current_app
 from models.supabase_client import supabase_client
 from supabase.client import create_client  # 正确导入
+from utils.cos_client import cos_client  # 导入 COS 客户端
 
 class AIImageGenerator:
     """AI图片生成器"""
@@ -122,37 +123,56 @@ class AIImageGenerator:
             print("Hugging Face API key未设置，跳过生成。")
             return None
             
+        print(f"使用 Hugging Face API 生成图片，API Key: {self.hf_api_key[:10]}...")
+        
         headers = {
             "Authorization": f"Bearer {self.hf_api_key}",
             "Content-Type": "application/json"
         }
         
+        # 简化请求格式，只使用基本的 inputs 参数
         data = {
-            "inputs": prompt,
-            "parameters": {
-                "negative_prompt": negative_prompt,
-                "num_inference_steps": 30,
-                "guidance_scale": 7.5,
-                "width": 512,
-                "height": 512
-            }
+            "inputs": f"{prompt}, high quality, detailed, artistic"
         }
         
         try:
-            response = requests.post(self.hf_api_url, headers=headers, json=data)
+            print(f"发送请求到: {self.hf_api_url}")
+            print(f"请求数据: {data}")
+            
+            response = requests.post(self.hf_api_url, headers=headers, json=data, timeout=60)
+            
+            print(f"Hugging Face API 响应状态码: {response.status_code}")
+            
             if response.status_code == 200:
+                print("Hugging Face 图片生成成功")
                 return BytesIO(response.content)
             else:
                 print(f"Hugging Face API 错误: 状态码 {response.status_code}")
                 print(f"Hugging Face API 响应: {response.text[:500]}") # 打印前500个字符的响应
                 
+                # 检查是否是模型加载中的错误
+                if "loading" in response.text.lower():
+                    print("模型正在加载中，请稍后重试")
+                elif "quota" in response.text.lower():
+                    print("API 配额已用完")
+                elif "unauthorized" in response.text.lower():
+                    print("API Key 无效或权限不足")
+                elif "model" in response.text.lower() and "not found" in response.text.lower():
+                    print("模型不存在或不可访问")
+                
+        except requests.exceptions.Timeout:
+            print("Hugging Face API 请求超时")
+        except requests.exceptions.RequestException as e:
+            print(f"Hugging Face API 请求异常: {e}")
         except Exception as e:
             print(f"Hugging Face生成失败: {e}")
+            import traceback
+            traceback.print_exc()
         
         return None
     
     def generate_poem_image(self, article, user_token=None):
-        """为诗词生成AI图片，并上传到Supabase Storage"""
+        """为诗词生成AI图片，并上传到腾讯云 COS"""
         try:
             # 生成提示词
             prompt, negative_prompt = self.generate_prompt_from_poem(
@@ -161,44 +181,62 @@ class AIImageGenerator:
                 article.get('tags', [])
             )
             print(f"生成提示词: {prompt}")
+            
             # 优先尝试Hugging Face
             image_data = self.generate_with_huggingface(prompt, negative_prompt)
+            
             # 如果失败，再尝试使用Stability AI
             if not image_data:
+                print("Hugging Face 生成失败，尝试 Stability AI")
                 image_data = self.generate_with_stability_ai(prompt, negative_prompt)
+                
             if image_data:
-                # 上传到 Supabase Storage
+                # 生成文件名
                 filename = f"ai_generated_{uuid.uuid4().hex}.png"
-                bucket = "images"
                 
-                if not supabase_client.supabase:
-                    raise RuntimeError("Supabase client 未初始化")
-                storage_client = supabase_client.supabase.storage
-                
-                if user_token:
-                    supabase_url = os.getenv("SUPABASE_URL") or ""
-                    supabase_key = os.getenv("SUPABASE_KEY") or ""
-                    authed_supabase = create_client(
-                        supabase_url,
-                        supabase_key
+                # 优先使用腾讯云 COS
+                if cos_client.is_available():
+                    print("使用腾讯云 COS 上传图片")
+                    public_url = cos_client.upload_file(
+                        image_data.getvalue(),
+                        filename,
+                        'image/png'
                     )
-                    authed_supabase.auth.set_session(access_token=user_token, refresh_token=user_token)
-                    storage_client = authed_supabase.storage
-
-                # 上传图片内容
-                res = storage_client.from_(bucket).upload(
-                    filename, 
-                    image_data.getvalue(), 
-                    {"content-type": "image/png"}
-                )
-                print(f"Supabase上传返回: {res}")
+                else:
+                    print("COS 不可用，回退到 Supabase")
+                    # 回退到 Supabase
+                    bucket = "images"
+                    
+                    if not supabase_client.supabase:
+                        raise RuntimeError("Supabase client 未初始化")
+                    
+                    storage_client = supabase_client.supabase.storage
+                    
+                    # 上传图片内容
+                    res = storage_client.from_(bucket).upload(
+                        filename, 
+                        image_data.getvalue(), 
+                        {"content-type": "image/png"}
+                    )
+                    print(f"Supabase上传返回: {res}")
+                    
+                    # 获取公开URL
+                    public_url = supabase_client.supabase.storage.from_(bucket).get_public_url(filename)
                 
-                # 简单判断：只要没有抛异常就认为上传成功
-                public_url = supabase_client.supabase.storage.from_(bucket).get_public_url(filename)
-                return public_url
-            return None
+                if public_url:
+                    print(f"AI图片生成成功: {public_url}")
+                    return public_url
+                else:
+                    print("图片上传失败")
+                    return None
+            else:
+                print("所有AI图片生成方法都失败了")
+                return None
+                
         except Exception as e:
             print(f"AI图片生成失败: {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
 # 创建全局实例

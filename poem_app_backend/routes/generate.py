@@ -62,7 +62,7 @@ def generate_image(current_user_id):
         
         # 生成图片
         # 优先使用AI图片生成
-        image_url = ai_generator.generate_poem_image(article, user_token=token)
+        image_url = ai_generator.generate_poem_image(article)
         
         # 如果AI生成失败，回退到文字排版
         if not image_url:
@@ -161,7 +161,7 @@ def generate_preview(current_user_id):
         
         # 生成预览图片
         # 优先使用AI图片生成
-        image_url = ai_generator.generate_poem_image(temp_article, user_token=token)
+        image_url = ai_generator.generate_poem_image(temp_article)
         
         # 如果AI生成失败，回退到文字排版
         if not image_url:
