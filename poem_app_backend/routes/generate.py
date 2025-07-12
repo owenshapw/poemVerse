@@ -159,23 +159,26 @@ def generate_preview(current_user_id):
         # 提取token
         token = request.headers['Authorization'].split(" ")[1]
         
-        # 生成预览图片
         # 优先使用AI图片生成
+        print("🎨 尝试AI图片生成预览...")
         image_url = ai_generator.generate_poem_image(temp_article)
         
         # 如果AI生成失败，回退到文字排版
         if not image_url:
             print("AI预览图片生成失败，使用文字排版")
-            # 注意：同样需要为备用方案传递token
             image_url = generate_article_image(temp_article, is_preview=True, user_token=token)
             
         if not image_url:
             return jsonify({'error': '预览图片生成失败'}), 500
         
+        print(f"✅ 预览图片生成成功: {image_url}")
         return jsonify({
             'message': '预览图片生成成功',
             'preview_url': image_url
         }), 200
         
     except Exception as e:
+        print(f"❌ 预览图片生成异常: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500 
