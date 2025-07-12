@@ -8,6 +8,7 @@ from flask import current_app
 from models.supabase_client import supabase_client
 from supabase.client import create_client  # 正确导入
 from utils.cloudflare_client import cloudflare_client  # 导入 Cloudflare 客户端
+import imghdr  # 添加图片类型检测
 
 class AIImageGenerator:
     """AI图片生成器"""
@@ -15,11 +16,21 @@ class AIImageGenerator:
     def __init__(self):
         # 使用免费的Stable Diffusion API - 使用更兼容的模型
         self.api_url = "https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image"
-        self.api_key = os.getenv('STABILITY_API_KEY', '')  # 需要注册获取免费API key
+        self.api_key = None
         
         # 备用API - 使用免费的Hugging Face API
         self.hf_api_url = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
-        self.hf_api_key = os.getenv('HF_API_KEY', '')  # 需要注册获取免费API key
+        self.hf_api_key = None
+        self._initialized = False
+    
+    def _init_client(self):
+        """延迟初始化，确保环境变量已加载"""
+        if self._initialized:
+            return
+            
+        self.api_key = os.environ.get('STABILITY_API_KEY', '')
+        self.hf_api_key = os.environ.get('HF_API_KEY', '')
+        self._initialized = True
         
     def generate_prompt_from_poem(self, title, content, tags):
         """根据诗词内容生成AI提示词"""
@@ -102,7 +113,7 @@ class AIImageGenerator:
         }
         
         try:
-            response = requests.post(self.api_url, headers=headers, json=data)
+            response = requests.post(self.api_url, headers=headers, json=data, timeout=30)
             if response.status_code == 200:
                 result = response.json()
                 if 'artifacts' in result and len(result['artifacts']) > 0:
@@ -111,7 +122,7 @@ class AIImageGenerator:
                     import base64
                     return BytesIO(base64.b64decode(image_data))
             else:
-                print(f"Stability AI API错误: {response.status_code} - {response.text[:200]}")
+                print(f"Stability AI API错误: {response.status_code}")
         except Exception as e:
             print(f"Stability AI生成失败: {e}")
         
@@ -120,11 +131,8 @@ class AIImageGenerator:
     def generate_with_huggingface(self, prompt, negative_prompt):
         """使用Hugging Face生成图片"""
         if not self.hf_api_key:
-            print("Hugging Face API key未设置，跳过生成。")
             return None
             
-        print(f"使用 Hugging Face API 生成图片，API Key: {self.hf_api_key[:10]}...")
-        
         headers = {
             "Authorization": f"Bearer {self.hf_api_key}",
             "Content-Type": "application/json"
@@ -136,38 +144,17 @@ class AIImageGenerator:
         }
         
         try:
-            print(f"发送请求到: {self.hf_api_url}")
-            print(f"请求数据: {data}")
-            
             response = requests.post(self.hf_api_url, headers=headers, json=data, timeout=60)
             
-            print(f"Hugging Face API 响应状态码: {response.status_code}")
-            
             if response.status_code == 200:
-                print("Hugging Face 图片生成成功")
                 return BytesIO(response.content)
             else:
                 print(f"Hugging Face API 错误: 状态码 {response.status_code}")
-                print(f"Hugging Face API 响应: {response.text[:500]}") # 打印前500个字符的响应
-                
-                # 检查是否是模型加载中的错误
-                if "loading" in response.text.lower():
-                    print("模型正在加载中，请稍后重试")
-                elif "quota" in response.text.lower():
-                    print("API 配额已用完")
-                elif "unauthorized" in response.text.lower():
-                    print("API Key 无效或权限不足")
-                elif "model" in response.text.lower() and "not found" in response.text.lower():
-                    print("模型不存在或不可访问")
                 
         except requests.exceptions.Timeout:
             print("Hugging Face API 请求超时")
-        except requests.exceptions.RequestException as e:
-            print(f"Hugging Face API 请求异常: {e}")
         except Exception as e:
             print(f"Hugging Face生成失败: {e}")
-            import traceback
-            traceback.print_exc()
         
         return None
     
@@ -175,16 +162,14 @@ class AIImageGenerator:
         """确保 Supabase 客户端已初始化"""
         try:
             if supabase_client.supabase is None:
-                print("⚠️ Supabase 客户端未初始化，尝试重新初始化...")
                 # 尝试从环境变量重新初始化
-                supabase_url = os.getenv('SUPABASE_URL')
-                supabase_key = os.getenv('SUPABASE_KEY')
+                supabase_url = os.environ.get('SUPABASE_URL')
+                supabase_key = os.environ.get('SUPABASE_KEY')
                 
                 if supabase_url and supabase_key:
                     supabase_client.supabase = create_client(supabase_url, supabase_key)
-                    print("✅ Supabase 客户端重新初始化成功")
+                    return True
                 else:
-                    print("❌ 无法重新初始化 Supabase 客户端：环境变量缺失")
                     return False
             return True
         except Exception as e:
@@ -193,6 +178,9 @@ class AIImageGenerator:
     
     def generate_poem_image(self, article, user_token=None):
         """为诗词生成AI图片，并上传到腾讯云 COS"""
+        # 延迟初始化
+        self._init_client()
+        
         try:
             # 生成提示词
             prompt, negative_prompt = self.generate_prompt_from_poem(
@@ -200,52 +188,48 @@ class AIImageGenerator:
                 article['content'], 
                 article.get('tags', [])
             )
-            print(f"生成提示词: {prompt}")
             
             # 优先尝试Hugging Face
             image_data = self.generate_with_huggingface(prompt, negative_prompt)
             
             # 如果失败，再尝试使用Stability AI
             if not image_data:
-                print("Hugging Face 生成失败，尝试 Stability AI")
                 image_data = self.generate_with_stability_ai(prompt, negative_prompt)
                 
             if image_data:
+                # 获取原始图片数据
+                image_data.seek(0)
+                image_bytes = image_data.read()
+                
                 # 生成文件名
                 filename = f"ai_generated_{uuid.uuid4().hex}.png"
                 
-                # 优先使用腾讯云 COS
+                # 优先使用 Cloudflare Images（自动处理格式转换）
                 if cloudflare_client.is_available():
-                    print("使用 Cloudflare Images 上传图片")
                     public_url = cloudflare_client.upload_file(
-                        image_data.getvalue(),
-                        filename,
-                        'image/png'
+                        image_bytes,
+                        filename
                     )
                 else:
-                    print("Cloudflare Images 不可用，回退到 Supabase")
                     # 回退到 Supabase
                     bucket = "images"
                     
                     # 确保 Supabase 客户端已初始化
                     if not self._ensure_supabase_initialized():
-                        print("❌ Supabase 客户端初始化失败，无法上传图片")
                         return None
                     
                     # 再次检查 supabase 客户端是否可用
                     if supabase_client.supabase is None:
-                        print("❌ Supabase 客户端仍然不可用")
                         return None
                     
                     storage_client = supabase_client.supabase.storage
                     
-                    # 上传图片内容
+                    # 上传图片内容 - 使用已读取的字节数据
                     res = storage_client.from_(bucket).upload(
                         filename, 
-                        image_data.getvalue(), 
+                        image_bytes, 
                         {"content-type": "image/png"}
                     )
-                    print(f"Supabase上传返回: {res}")
                     
                     # 获取公开URL
                     public_url = supabase_client.supabase.storage.from_(bucket).get_public_url(filename)
@@ -262,8 +246,6 @@ class AIImageGenerator:
                 
         except Exception as e:
             print(f"AI图片生成失败: {e}")
-            import traceback
-            traceback.print_exc()
             return None
 
 # 创建全局实例

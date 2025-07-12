@@ -3,46 +3,70 @@
 重置测试用户密码
 """
 
+import os
 import bcrypt
-from models.supabase_client import supabase_client
-from config import Config
-from flask import Flask
+from dotenv import load_dotenv
+from supabase.client import create_client
 
-app = Flask(__name__)
-app.config.from_object(Config())
-supabase_client.init_app(app)
+# 加载环境变量
+load_dotenv()
 
 def reset_test_user_password():
     """重置测试用户密码"""
-    with app.app_context():
-        if not supabase_client.supabase:
-            print("❌ Supabase 客户端未初始化")
+    print("🔧 重置测试用户密码...")
+    
+    # 测试用户信息
+    test_email = "test@example.com"
+    new_password = "123456"
+    
+    # 获取 Supabase 配置
+    supabase_url = os.environ.get("SUPABASE_URL")
+    supabase_key = os.environ.get("SUPABASE_KEY")
+    
+    if not supabase_url or not supabase_key:
+        print("❌ Supabase 环境变量未配置")
+        return False
+    
+    try:
+        # 创建 Supabase 客户端
+        supabase = create_client(supabase_url, supabase_key)
+        print("✅ Supabase 客户端创建成功")
+        
+        # 查找测试用户
+        print(f"查找用户: {test_email}")
+        result = supabase.table('users').select('*').eq('email', test_email).execute()
+        
+        if not result.data:
+            print("❌ 测试用户不存在")
             return False
         
-        email = "test@example.com"
-        new_password = "test123456"
+        user = result.data[0]
+        print(f"✅ 找到用户: {user['id']}")
         
-        # 查找用户
-        user = supabase_client.get_user_by_email(email)
-        if not user:
-            print(f"❌ 用户 {email} 不存在")
-            return False
-        
-        # 生成新的密码哈希
+        # 生成新密码哈希
         password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         
-        # 更新密码
-        result = supabase_client.supabase.table('users').update({
+        # 更新用户密码
+        update_result = supabase.table('users').update({
             'password_hash': password_hash
-        }).eq('email', email).execute()
+        }).eq('id', user['id']).execute()
         
-        if result.data:
-            print(f"✅ 用户 {email} 密码重置成功")
+        if update_result.data:
+            print("✅ 密码重置成功")
             print(f"新密码: {new_password}")
             return True
         else:
             print("❌ 密码重置失败")
             return False
+            
+    except Exception as e:
+        print(f"❌ 重置密码时出现错误: {e}")
+        return False
 
-if __name__ == "__main__":
-    reset_test_user_password() 
+if __name__ == '__main__':
+    success = reset_test_user_password()
+    if success:
+        print("\n✅ 测试用户密码重置成功!")
+        print("现在可以使用 test@example.com / 123456 登录")
+    else:
+        print("\n❌ 密码重置失败!") 

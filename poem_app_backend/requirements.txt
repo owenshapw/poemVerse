@@ -7,4 +7,3 @@ PyJWT==2.8.0
 Pillow>=10.4.0,<11.0.0
 requests==2.31.0
 gunicorn==21.2.0 
-cos-python-sdk-v5==1.9.25 

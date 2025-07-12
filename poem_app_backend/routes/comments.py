@@ -35,6 +35,10 @@ def token_required(f):
     
     return decorated
 
+def ensure_supabase():
+    if supabase_client.supabase is None:
+        supabase_client.init_app(current_app)
+
 @comments_bp.route('/comments', methods=['POST'])
 @token_required
 def create_comment(current_user_id):
@@ -109,24 +113,18 @@ def get_article_comments(article_id):
 def delete_comment(current_user_id, comment_id):
     """删除评论（仅评论者可删除）"""
     try:
+        ensure_supabase()
         # 获取评论信息
-        result = supabase_client.supabase.table('comments').select('*').eq('id', comment_id).execute()
-        if not result.data:
+        comment = supabase_client.get_comment_by_id(comment_id)
+        if not comment:
             return jsonify({'error': '评论不存在'}), 404
-        
-        comment = result.data[0]
-        
         # 检查是否为评论者
         if comment['user_id'] != current_user_id:
             return jsonify({'error': '无权限删除此评论'}), 403
-        
         # 删除评论
-        delete_result = supabase_client.supabase.table('comments').delete().eq('id', comment_id).execute()
-        
+        delete_result = supabase_client.delete_comment(comment_id)
         if not delete_result.data:
             return jsonify({'error': '删除失败'}), 500
-        
         return jsonify({'message': '评论删除成功'}), 200
-        
     except Exception as e:
         return jsonify({'error': str(e)}), 500 

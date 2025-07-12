@@ -131,4 +131,37 @@ class SupabaseClient:
         result = self.supabase.table('comments').select('*').eq('article_id', article_id).order('created_at', desc=True).execute()
         return result.data
 
+    def get_top_month_article(self):
+        """获取本月最热门的文章"""
+        if self.supabase is None:
+            raise RuntimeError("Supabase client not initialized. Call init_app() first.")
+        from datetime import datetime, timedelta
+        one_month_ago = datetime.utcnow() - timedelta(days=30)
+        result = self.supabase.table('articles').select('*').gte('created_at', one_month_ago.isoformat()).order('created_at', desc=True).limit(1).execute()
+        return result.data[0] if result.data else None
+
+    def get_top_week_articles(self):
+        """获取本周热门文章列表"""
+        if self.supabase is None:
+            raise RuntimeError("Supabase client not initialized. Call init_app() first.")
+        from datetime import datetime, timedelta
+        one_week_ago = datetime.utcnow() - timedelta(days=7)
+        result = self.supabase.table('articles').select('*').gte('created_at', one_week_ago.isoformat()).order('created_at', desc=True).limit(10).execute()
+        return result.data
+
+    def delete_comment(self, comment_id):
+        if self.supabase is None:
+            from flask import current_app
+            self.init_app(current_app)
+        return self.supabase.table('comments').delete().eq('id', comment_id).execute()
+
+    def get_comment_by_id(self, comment_id):
+        if self.supabase is None:
+            from flask import current_app
+            self.init_app(current_app)
+        result = self.supabase.table('comments').select('*').eq('id', comment_id).execute()
+        if result.data:
+            return result.data[0]
+        return None
+
 supabase_client = SupabaseClient() 

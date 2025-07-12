@@ -13,16 +13,25 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-# 启动时打印环境变量，便于排查
-print("SUPABASE_URL:", os.environ.get("SUPABASE_URL"))
-print("SUPABASE_KEY:", os.environ.get("SUPABASE_KEY"))
-
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     
+    # 检查 Supabase 配置
+    if not app.config.get('SUPABASE_URL') or not app.config.get('SUPABASE_KEY'):
+        print("❌ Supabase 配置缺失!")
+        raise RuntimeError("Supabase 配置缺失")
+    
     # 初始化Supabase客户端
-    supabase_client.init_app(app)
+    try:
+        supabase_client.init_app(app)
+        # 简化连接测试，减少启动时间
+        if supabase_client.supabase is None:
+            raise RuntimeError("Supabase 客户端初始化后仍为 None")
+        
+    except Exception as e:
+        print(f"❌ Supabase 初始化失败: {e}")
+        raise RuntimeError(f"Supabase 初始化失败: {e}")
     
     # 启用CORS - 允许Flutter前端访问
     CORS(app, resources={
@@ -57,5 +66,9 @@ def create_app():
     return app
 
 if __name__ == '__main__':
-    app = create_app()
-    app.run(host='0.0.0.0', port=8080) 
+    try:
+        app = create_app()
+        print("🚀 诗篇后端服务启动成功!")
+        app.run(host='0.0.0.0', port=8080)
+    except Exception as e:
+        print(f"❌ 服务启动失败: {e}") 

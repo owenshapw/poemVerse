@@ -1,11 +1,7 @@
 import os
 from dotenv import load_dotenv
 
-# 自动检测 .env 文件，不存在则从 env_example.txt 复制
-if not os.path.exists('.env') and os.path.exists('env_example.txt'):
-    import shutil
-    shutil.copy('env_example.txt', '.env')
-
+# 加载环境变量
 load_dotenv()
 
 class Config:
