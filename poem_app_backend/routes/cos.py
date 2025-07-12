@@ -86,8 +86,8 @@ def cos_status():
         config_info = {
             'secret_id': '已配置' if os.getenv('COS_SECRET_ID') else '未配置',
             'secret_key': '已配置' if os.getenv('COS_SECRET_KEY') else '未配置',
-            'region': os.getenv('COS_REGION', '未配置'),
-            'bucket': os.getenv('COS_BUCKET', '未配置'),
+            'region': cos_client.region if cos_client.is_available() else os.getenv('COS_REGION', '未配置'),
+            'bucket': cos_client.bucket if cos_client.is_available() else os.getenv('COS_BUCKET', '未配置'),
             'available': is_available
         }
         

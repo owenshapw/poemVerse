@@ -12,7 +12,7 @@ class COSClient:
         # 从环境变量获取配置
         self.secret_id = os.getenv('COS_SECRET_ID')
         self.secret_key = os.getenv('COS_SECRET_KEY')
-        self.region = os.getenv('COS_REGION', 'ap-beijing')  # 默认北京
+        self.region = os.getenv('COS_REGION', 'ap-guangzhou')  # 默认广州
         self.bucket = os.getenv('COS_BUCKET')
         self.domain = os.getenv('COS_DOMAIN')  # 自定义域名，如 https://your-domain.com
         
