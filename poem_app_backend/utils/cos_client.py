@@ -44,13 +44,11 @@ class COSClient:
             # 生成唯一文件名
             file_key = f"poemverse/{filename}"
             
-            # 上传文件（适合内存数据）
+            # 上传文件（适合内存数据）- 简化参数以兼容多可用区存储桶
             response = self.client.put_object(
                 Bucket=self.bucket,
                 Body=file_data,
                 Key=file_key,
-                StorageClass='STANDARD',
-                EnableMD5=False,
                 ContentType=content_type
             )
             
