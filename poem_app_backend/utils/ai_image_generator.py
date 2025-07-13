@@ -9,6 +9,7 @@ from models.supabase_client import supabase_client
 from supabase.client import create_client  # 正确导入
 from utils.cloudflare_client import cloudflare_client  # 导入 Cloudflare 客户端
 import imghdr  # 添加图片类型检测
+import re
 
 class AIImageGenerator:
     """AI图片生成器"""
@@ -195,6 +196,16 @@ class AIImageGenerator:
             print(f"❌ Supabase 客户端重新初始化失败: {e}")
             return False
     
+    def _format_image_url(self, url: str) -> str:
+        """将Cloudflare图片URL统一为自定义域名格式"""
+        if not url:
+            return url
+        m = re.search(r'imagedelivery\.net/[^/]+/([\w-]+)/public', url)
+        if m:
+            image_id = m.group(1)
+            return f"https://images.shipian.app/images/{image_id}/public"
+        return url
+
     def generate_poem_image(self, article, user_token=None):
         # 延迟初始化
         self._init_client()
@@ -268,7 +279,7 @@ class AIImageGenerator:
                 
                 if public_url:
                     print(f"✅ AI图片生成成功: {public_url}")
-                    return public_url
+                    return self._format_image_url(public_url)
                 else:
                     print("❌ 图片上传失败")
                     return None

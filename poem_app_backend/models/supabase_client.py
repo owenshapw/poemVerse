@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime
 import bcrypt
 from typing import Optional, Union
+import re
 
 class SupabaseClient:
     def __init__(self):
@@ -42,6 +43,17 @@ class SupabaseClient:
             raise RuntimeError("Supabase client not initialized. Call init_app() first.")
         result = self.supabase.table('users').select('*').eq('id', user_id).execute()
         return result.data[0] if result.data else None
+
+    def _format_image_url(self, url: str) -> str:
+        """将Cloudflare图片URL统一为自定义域名格式"""
+        if not url:
+            return url
+        # 匹配Cloudflare Images的image_id
+        m = re.search(r'imagedelivery\.net/[^/]+/([\w-]+)/public', url)
+        if m:
+            image_id = m.group(1)
+            return f"https://images.shipian.app/images/{image_id}/public"
+        return url
 
     def create_article(self, user_id: str, title: str, content: str, tags: list, author: Optional[str] = None):
         """创建文章"""
@@ -97,10 +109,11 @@ class SupabaseClient:
         return len(result.data) > 0
 
     def update_article_image(self, article_id: str, image_url: str):
-        """更新文章图片URL"""
+        """更新文章图片URL，写入前统一格式"""
         if self.supabase is None:
             raise RuntimeError("Supabase client not initialized. Call init_app() first.")
-        result = self.supabase.table('articles').update({'image_url': image_url}).eq('id', article_id).execute()
+        formatted_url = self._format_image_url(image_url)
+        result = self.supabase.table('articles').update({'image_url': formatted_url}).eq('id', article_id).execute()
         return result.data[0] if result.data else None
 
     def update_article_fields(self, article_id: str, update_data: dict):

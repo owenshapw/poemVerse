@@ -1,4 +1,6 @@
 // lib/screens/home_screen.dart
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:poem_verse_app/api/api_service.dart';
 import 'package:poem_verse_app/models/article.dart';
@@ -10,10 +12,6 @@ import 'package:flutter/services.dart';
 import 'package:poem_verse_app/screens/login_screen.dart';
 // Added this import
 import 'package:poem_verse_app/widgets/simple_network_image.dart'; // 添加简化图片组件
-// 添加测试图片组件
-import 'package:poem_verse_app/widgets/network_test.dart'; // 添加网络测试组件
-import 'package:poem_verse_app/widgets/network_debug.dart'; // 添加网络调试组件
-import 'package:poem_verse_app/widgets/quick_network_diagnosis.dart'; // 添加快速网络诊断组件
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -145,15 +143,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         SizedBox(height: 4),
                         ...filteredWeekList.take(3).map((poem) => _buildWeekCard(context, poem)),
-                        SizedBox(height: 24),
-                        // 网络连接测试
-                        NetworkTest(),
-                        SizedBox(height: 16),
-                        // 网络调试工具
-                        NetworkDebug(),
-                        SizedBox(height: 16),
-                        // 快速网络诊断
-                        QuickNetworkDiagnosis(),
                       ],
                     );
                   },

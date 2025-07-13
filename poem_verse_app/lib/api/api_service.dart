@@ -200,20 +200,16 @@ class ApiService {
   }
 
   static String buildImageUrl(String? imageUrl) {
-    print('🔗 buildImageUrl 输入: $imageUrl');
     
     if (imageUrl == null || imageUrl.isEmpty) {
-      print('🔗 返回空字符串');
       return '';
     }
     
     if (imageUrl.startsWith('http')) {
-      print('🔗 已经是完整URL，直接返回: $imageUrl');
       return imageUrl;
     }
     
     final fullUrl = '${AppConfig.backendBaseUrl}$imageUrl';
-    print('🔗 构建完整URL: $fullUrl');
     return fullUrl;
   }
 

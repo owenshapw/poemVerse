@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from models.supabase_client import supabase_client
 from utils.cloudflare_client import cloudflare_client  # 导入 Cloudflare 客户端
 import os # 导入 os 模块
+import re
 
 upload_bp = Blueprint('upload', __name__)
 
@@ -61,7 +62,16 @@ def upload_image():
         # 获取公开URL
         public_url = storage.from_(bucket).get_public_url(filename)
     
+    def _format_image_url(url):
+        if not url:
+            return url
+        m = re.search(r'imagedelivery\.net/[^/]+/([\w-]+)/public', url)
+        if m:
+            image_id = m.group(1)
+            return f"https://images.shipian.app/images/{image_id}/public"
+        return url
+
     if public_url:
-        return jsonify({'url': public_url})
+        return jsonify({'url': _format_image_url(public_url)})
     else:
         return jsonify({'error': '文件上传失败'}), 500
