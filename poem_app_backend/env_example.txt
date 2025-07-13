@@ -21,13 +21,6 @@ CLOUDFLARE_API_TOKEN=your-cloudflare-api-token
 STABILITY_API_KEY=your-stability-ai-api-key
 HF_API_KEY=your-huggingface-api-key
 
-# 腾讯云 COS 配置
-COS_SECRET_ID=your-cos-secret-id
-COS_SECRET_KEY=your-cos-secret-key
-COS_REGION=ap-beijing
-COS_BUCKET=your-bucket-name
-COS_DOMAIN=https://your-domain.com
-
 # 应用配置
 FLASK_ENV=development
 FLASK_DEBUG=True

@@ -126,6 +126,7 @@ def update_article(current_user_id, article_id):
         content = data.get('content')
         tags = data.get('tags', [])
         author = data.get('author', '')
+        preview_image_url = data.get('preview_image_url')  # 新增：预览图片URL
         
         if not title or not content:
             return jsonify({'error': '标题和内容不能为空'}), 400
@@ -137,7 +138,7 @@ def update_article(current_user_id, article_id):
         if article['user_id'] != current_user_id:
             return jsonify({'error': '无权限修改此文章'}), 403
         
-        # 更新文章
+        # 更新文章基本信息
         update_data = {
             'title': title,
             'content': content,
@@ -147,6 +148,18 @@ def update_article(current_user_id, article_id):
         updated_article = supabase_client.update_article_fields(article_id, update_data)
         if not updated_article:
             return jsonify({'error': '文章更新失败'}), 500
+        
+        # 处理图片更新
+        try:
+            if preview_image_url:
+                print(f"更新文章图片: {preview_image_url}")
+                # 更新文章的图片URL
+                updated_article = supabase_client.update_article_image(article_id, preview_image_url)
+                if not updated_article:
+                    print("图片URL更新失败")
+        except Exception as e:
+            print(f"图片处理失败: {str(e)}")
+            # 图片处理失败不影响文章更新
         
         return jsonify({
             'message': '文章更新成功',

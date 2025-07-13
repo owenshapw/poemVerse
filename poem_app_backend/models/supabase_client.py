@@ -153,12 +153,16 @@ class SupabaseClient:
         if self.supabase is None:
             from flask import current_app
             self.init_app(current_app)
+        if self.supabase is None:
+            raise RuntimeError("Supabase client not initialized")
         return self.supabase.table('comments').delete().eq('id', comment_id).execute()
 
     def get_comment_by_id(self, comment_id):
         if self.supabase is None:
             from flask import current_app
             self.init_app(current_app)
+        if self.supabase is None:
+            raise RuntimeError("Supabase client not initialized")
         result = self.supabase.table('comments').select('*').eq('id', comment_id).execute()
         if result.data:
             return result.data[0]

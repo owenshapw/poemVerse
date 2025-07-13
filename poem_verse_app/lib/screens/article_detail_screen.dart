@@ -6,7 +6,8 @@ import 'package:poem_verse_app/providers/auth_provider.dart';
 import 'package:poem_verse_app/providers/article_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:poem_verse_app/api/api_service.dart';
-import 'package:poem_verse_app/screens/create_article_screen.dart'; // Added import for CreateArticleScreen
+import 'package:poem_verse_app/screens/create_article_screen.dart';
+import 'package:poem_verse_app/widgets/network_image_with_dio.dart';
 
 class ArticleDetailScreen extends StatefulWidget {
   final Article article;
@@ -19,13 +20,13 @@ class ArticleDetailScreen extends StatefulWidget {
 
 class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   late Article _article;
+  bool _isDeleting = false;
 
   @override
   void initState() {
     super.initState();
     _article = widget.article;
   }
-
 
   // 检查是否为文章作者
   bool _isAuthor(BuildContext context) {
@@ -34,66 +35,117 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   }
 
   // 删除文章
-  Future<void> _deleteArticle(BuildContext context) async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
-    final token = authProvider.token!;
-    final articleId = _article.id;
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
+  Future<void> _deleteArticle() async {
+    if (_isDeleting) return;
+    
+    setState(() {
+      _isDeleting = true;
+    });
 
-    final confirmed = await showDialog<bool>(
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
+      final token = authProvider.token!;
+      final articleId = _article.id;
+
+      // 显示确认对话框
+      final confirmed = await _showDeleteConfirmDialog();
+      if (confirmed != true) {
+        setState(() {
+          _isDeleting = false;
+        });
+        return;
+      }
+
+      // 显示加载对话框
+      if (mounted) {
+        _showLoadingDialog();
+      }
+
+      // 执行删除
+      await articleProvider.deleteArticle(token, articleId);
+      
+      if (mounted) {
+        _hideLoadingDialog();
+        _showSuccessMessage('诗篇删除成功');
+        Navigator.of(context).pop(); // 返回上一页
+      }
+    } catch (e) {
+      if (mounted) {
+        _hideLoadingDialog();
+        _showErrorMessage('删除失败：${e.toString()}');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDeleting = false;
+        });
+      }
+    }
+  }
+
+  // 显示删除确认对话框
+  Future<bool?> _showDeleteConfirmDialog() async {
+    return showDialog<bool>(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: Text('确认删除'),
-          content: Text('确定要删除这篇诗篇吗？删除后无法恢复。'),
+          title: const Text('确认删除'),
+          content: const Text('确定要删除这篇诗篇吗？删除后无法恢复。'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text('取消'),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('取消'),
             ),
             TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
               style: TextButton.styleFrom(
                 foregroundColor: Colors.red,
               ),
-              child: Text('删除'),
+              child: const Text('删除'),
             ),
           ],
         );
       },
     );
-    if (confirmed == true) {
-      try {
-        if (mounted) {
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (BuildContext context) {
-              return Center(child: CircularProgressIndicator());
-            },
-          );
-        }
-        await articleProvider.deleteArticle(token, articleId);
-        if (!mounted) return;
-        if (mounted) {
-          Navigator.of(context, rootNavigator: true).pop(); // 关闭 Dialog
-          scaffoldMessenger.showSnackBar(
-            SnackBar(content: Text('诗篇删除成功'), backgroundColor: Colors.green),
-          );
-          navigator.pop();
-        }
-      } catch (e) {
-        if (!mounted) return;
-        if (mounted) {
-          navigator.pop();
-          scaffoldMessenger.showSnackBar(
-            SnackBar(content: Text('删除失败：${e.toString()}'), backgroundColor: Colors.red),
-          );
-        }
-      }
-    }
+  }
+
+  // 显示加载对话框
+  void _showLoadingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return const Center(
+          child: CircularProgressIndicator(),
+        );
+      },
+    );
+  }
+
+  // 隐藏加载对话框
+  void _hideLoadingDialog() {
+    Navigator.of(context, rootNavigator: true).pop();
+  }
+
+  // 显示成功消息
+  void _showSuccessMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  // 显示错误消息
+  void _showErrorMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 
   // 分享文章
@@ -114,52 +166,59 @@ ${_article.tags.isNotEmpty ? '标签：${_article.tags.join('、')}' : ''}
     SharePlus.instance.share(ShareParams(text: shareText));
   }
 
+  // 刷新文章
   Future<void> _refreshArticle() async {
     try {
       final updated = await ApiService.getArticleDetail(_article.id);
-      setState(() {
-        _article = updated;
-      });
+      if (mounted) {
+        setState(() {
+          _article = updated;
+        });
+      }
     } catch (e) {
-      // 可选：弹窗提示刷新失败
+      if (mounted) {
+        _showErrorMessage('刷新失败：$e');
+      }
+    }
+  }
+
+  // 编辑文章
+  Future<void> _editArticle() async {
+    final updated = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CreateArticleScreen(
+          article: _article,
+          isEdit: true,
+        ),
+      ),
+    );
+    
+    if (updated == true && mounted) {
+      await _refreshArticle();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    Provider.of<AuthProvider>(context, listen: false);
     return Scaffold(
       appBar: AppBar(
-        title: Text('诗篇详情'),
+        title: const Text('诗篇详情'),
         actions: [
           if (_isAuthor(context)) ...[
             IconButton(
-              icon: Icon(Icons.edit_outlined),
+              icon: const Icon(Icons.edit_outlined),
               tooltip: '编辑',
-              onPressed: () async {
-                if (!mounted) return;
-                final updated = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => CreateArticleScreen(
-                      article: _article,
-                      isEdit: true,
-                    ),
-                  ),
-                );
-                if (updated == true && mounted) {
-                  await _refreshArticle();
-                }
-              },
+              onPressed: _isDeleting ? null : _editArticle,
             ),
             IconButton(
-              icon: Icon(Icons.delete_outline, color: Colors.black87),
+              icon: const Icon(Icons.delete_outline, color: Colors.black87),
               tooltip: '删除',
-              onPressed: () => _deleteArticle(context),
+              onPressed: _isDeleting ? null : _deleteArticle,
             ),
           ],
           IconButton(
-            icon: Icon(Icons.share_outlined),
+            icon: const Icon(Icons.share_outlined),
             tooltip: '分享',
             onPressed: _shareArticle,
           ),
@@ -173,66 +232,57 @@ ${_article.tags.isNotEmpty ? '标签：${_article.tags.join('、')}' : ''}
             if (_article.imageUrl.isNotEmpty)
               SizedBox(
                 width: double.infinity,
-                height: 260, // 调整了
-                child: Image.network(
-                  ApiService.buildImageUrl(_article.imageUrl),
+                height: 260,
+                child: NetworkImageWithDio(
+                  imageUrl: ApiService.buildImageUrl(_article.imageUrl),
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: Colors.grey[200],
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.image_not_supported, size: 64, color: Colors.grey),
-                            Text('图片加载失败'),
-                          ],
-                        ),
+                  placeholder: Container(
+                    color: Colors.grey[200],
+                    child: const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 16),
+                          Text('加载中...'),
+                        ],
                       ),
-                    );
-                  },
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Container(
-                      color: Colors.grey[200],
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CircularProgressIndicator(
-                              value: loadingProgress.expectedTotalBytes != null
-                                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                  : null,
-                            ),
-                            SizedBox(height: 16),
-                            Text('加载中...'),
-                          ],
-                        ),
+                    ),
+                  ),
+                  errorWidget: Container(
+                    color: Colors.grey[200],
+                    child: const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.image_not_supported, size: 64, color: Colors.grey),
+                          Text('图片加载失败'),
+                        ],
                       ),
-                    );
-                  },
+                    ),
+                  ),
                 ),
               ),
             // 内容部分
             Padding(
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // 标题
                   Text(
                     _article.title,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   // 作者信息
                   Row(
                     children: [
-                      Icon(Icons.person, color: Colors.grey),
-                      SizedBox(width: 8),
+                      const Icon(Icons.person, color: Colors.grey),
+                      const SizedBox(width: 8),
                       Text(
                         '作者：${_article.author}',
                         style: TextStyle(
@@ -242,12 +292,12 @@ ${_article.tags.isNotEmpty ? '标签：${_article.tags.join('、')}' : ''}
                       ),
                     ],
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   // 创建时间
                   Row(
                     children: [
-                      Icon(Icons.access_time, color: Colors.grey, size: 16),
-                      SizedBox(width: 8),
+                      const Icon(Icons.access_time, color: Colors.grey, size: 16),
+                      const SizedBox(width: 8),
                       Text(
                         '发布时间：${_formatDate(_article.createdAt)}',
                         style: TextStyle(
@@ -257,34 +307,34 @@ ${_article.tags.isNotEmpty ? '标签：${_article.tags.join('、')}' : ''}
                       ),
                     ],
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   // 标签
                   if (_article.tags.isNotEmpty) ...[
                     Wrap(
                       spacing: 8,
                       children: _article.tags.map((tag) => Chip(
                         label: Text(tag),
-                        backgroundColor: Theme.of(context).primaryColor.withAlpha(25),
+                        backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1), // 修正linter错误，回退为withOpacity
                         labelStyle: TextStyle(color: Theme.of(context).primaryColor),
                       )).toList(),
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                   ],
                   // 分隔线
-                  Divider(),
-                  SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 16),
                   // 内容
                   Container(
                     width: double.infinity,
-                    padding: EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8F6FF), // 非常浅的紫色背景
+                      color: const Color(0xFFF8F6FF),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.purple.withAlpha((255 * 0.1).round())),
+                      border: Border.all(color: Colors.purple.withOpacity(0.1)), // 修正linter错误，回退为withOpacity
                     ),
                     child: Text(
                       _article.content,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 16,
                         height: 1.8,
                         letterSpacing: 0.5,
@@ -292,38 +342,36 @@ ${_article.tags.isNotEmpty ? '标签：${_article.tags.join('、')}' : ''}
                       ),
                     ),
                   ),
-                  SizedBox(height: 32),
+                  const SizedBox(height: 32),
                   // 操作按钮
                   Row(
                     children: [
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () {
-                            // 点赞功能 - 暂时显示提示
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('点赞功能开发中...')),
+                              const SnackBar(content: Text('点赞功能开发中...')),
                             );
                           },
-                          icon: Icon(Icons.favorite_border),
-                          label: Text('点赞'),
+                          icon: const Icon(Icons.favorite_border),
+                          label: const Text('点赞'),
                         ),
                       ),
-                      SizedBox(width: 16),
+                      const SizedBox(width: 16),
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () {
-                            // 收藏功能待实现
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('收藏功能开发中...')),
+                              const SnackBar(content: Text('收藏功能开发中...')),
                             );
                           },
-                          icon: Icon(Icons.bookmark_border),
-                          label: Text('收藏'),
+                          icon: const Icon(Icons.bookmark_border),
+                          label: const Text('收藏'),
                         ),
                       ),
                     ],
                   ),
-                  SizedBox(height: 32),
+                  const SizedBox(height: 32),
                 ],
               ),
             ),

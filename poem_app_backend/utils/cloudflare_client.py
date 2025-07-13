@@ -123,8 +123,15 @@ class CloudflareClient:
                     # 使用 .get() 避免 dict key 不存在报错
                     variants = image_info.get('variants', [])
                     if variants:
-                        # 上传到public变体，但返回headphoto变体URL给APP端
-                        public_url = variants[0]  # 总是使用 public 变体
+                        # 优先使用 public 变体，如果没有则使用第一个变体
+                        public_url = next((v for v in variants if v.endswith('/public')), None)
+                        if not public_url:
+                            # 如果没有 public 变体，使用第一个变体并替换为 public
+                            first_variant = variants[0]
+                            if '/list' in first_variant:
+                                public_url = first_variant.replace('/list', '/public')
+                            else:
+                                public_url = first_variant
                         print(f"✅ 文件上传成功: {public_url}")
                         return public_url
                     else:

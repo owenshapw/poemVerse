@@ -4,10 +4,16 @@ import 'package:poem_verse_app/api/api_service.dart';
 import 'package:poem_verse_app/models/article.dart';
 import 'package:provider/provider.dart';
 import 'package:poem_verse_app/providers/article_provider.dart';
-import 'article_detail_screen.dart';
+import 'package:poem_verse_app/screens/article_detail_screen.dart';
 import 'dart:ui';
 import 'package:flutter/services.dart';
 import 'package:poem_verse_app/screens/login_screen.dart';
+// Added this import
+import 'package:poem_verse_app/widgets/simple_network_image.dart'; // 添加简化图片组件
+// 添加测试图片组件
+import 'package:poem_verse_app/widgets/network_test.dart'; // 添加网络测试组件
+import 'package:poem_verse_app/widgets/network_debug.dart'; // 添加网络调试组件
+import 'package:poem_verse_app/widgets/quick_network_diagnosis.dart'; // 添加快速网络诊断组件
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,23 +24,23 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late Future<Map<String, dynamic>> _homeDataFuture;
+  ArticleProvider? _articleProvider;
 
   @override
   void initState() {
     super.initState();
     _homeDataFuture = ApiService.fetchHomeArticles();
-    
     // 监听 ArticleProvider 变化，重新获取主页数据
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
-      articleProvider.addListener(_onArticleProviderChanged);
+      _articleProvider = Provider.of<ArticleProvider>(context, listen: false);
+      _articleProvider?.addListener(_onArticleProviderChanged);
     });
   }
 
   @override
   void dispose() {
-    final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
-    articleProvider.removeListener(_onArticleProviderChanged);
+    // 不要在dispose里用Provider.of(context)
+    _articleProvider?.removeListener(_onArticleProviderChanged);
     super.dispose();
   }
 
@@ -75,7 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
           BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
             child: Container(
-              color: Colors.white.withAlpha((255 * 0.05).round()),
+              color: Colors.white.withOpacity(0.05), // 修正linter错误，回退为withOpacity
             ),
           ),
           // 内容层（SafeArea 只包裹内容）
@@ -95,7 +101,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     if (snapshot.hasError) {
                       return Center(
                         child: Text(
-                          '加载失败: ${snapshot.error}',
+                          '加载失败: \n${snapshot.error}',
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                      );
+                    }
+                    if (!snapshot.hasData) {
+                      return Center(
+                        child: Text(
+                          '暂无数据',
                           style: TextStyle(color: Colors.white70),
                         ),
                       );
@@ -124,7 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w400,
-                              color: Colors.white.withAlpha(230),
+                              color: Colors.white.withOpacity(0.9), // 修正linter错误，回退为withOpacity
                               letterSpacing: 0.5,
                             ),
                           ),
@@ -132,6 +146,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         SizedBox(height: 4),
                         ...filteredWeekList.take(3).map((poem) => _buildWeekCard(context, poem)),
                         SizedBox(height: 24),
+                        // 网络连接测试
+                        NetworkTest(),
+                        SizedBox(height: 16),
+                        // 网络调试工具
+                        NetworkDebug(),
+                        SizedBox(height: 16),
+                        // 快速网络诊断
+                        QuickNetworkDiagnosis(),
                       ],
                     );
                   },
@@ -205,17 +227,17 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         margin: EdgeInsets.symmetric(horizontal: 6, vertical: 8), // 距离屏幕边缘更近
         decoration: BoxDecoration(
-          color: Colors.white.withAlpha(46),
+          color: Colors.white.withOpacity(0.18), // 修正linter错误，回退为withOpacity
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withAlpha(46),
+              color: Colors.black.withOpacity(0.18), // 修正linter错误，回退为withOpacity
               blurRadius: 32,
               offset: Offset(0, 12),
             ),
           ],
           border: Border.all(
-            color: Colors.white.withAlpha(64),
+            color: Colors.white.withOpacity(0.25), // 修正linter错误，回退为withOpacity
             width: 1.2,
           ),
         ),
@@ -232,49 +254,69 @@ class _HomeScreenState extends State<HomeScreen> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      Color(0xFF667eea).withAlpha(179),
-                      Color(0xFF764ba2).withAlpha(179),
+                      Color(0xFF667eea).withOpacity(0.7), // 修正linter错误，回退为withOpacity
+                      Color(0xFF764ba2).withOpacity(0.7), // 修正linter错误，回退为withOpacity
                     ],
                   ),
                 ),
               ),
               // 图片
               topMonth['image_url'] != null
-                  ? Image.network(
-                      ApiService.buildImageUrl(topMonth['image_url']),
+                  ? SimpleNetworkImage(
+                      imageUrl: ApiService.buildImageUrl(topMonth['image_url']),
                       width: double.infinity,
                       height: 220,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: double.infinity,
-                          height: 220,
-                          color: Colors.white.withAlpha(25),
-                          child: Icon(Icons.image_not_supported, color: Colors.white.withAlpha(77), size: 40),
-                        );
-                      },
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Container(
-                          width: double.infinity,
-                          height: 220,
-                          color: Colors.white.withAlpha(25),
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              value: loadingProgress.expectedTotalBytes != null
-                                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                  : null,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white.withAlpha(77)),
+                      placeholder: Container(
+                        width: double.infinity,
+                        height: 220,
+                        color: Colors.white.withOpacity(0.1), // 修正linter错误，回退为withOpacity
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.image_outlined, color: Colors.white.withOpacity(0.3), size: 40), // 修正linter错误，回退为withOpacity
+                            SizedBox(height: 8),
+                            Text(
+                              '加载中...\n${ApiService.buildImageUrl(topMonth['image_url'])}',
+                              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 10),
+                              textAlign: TextAlign.center,
                             ),
-                          ),
-                        );
-                      },
+                          ],
+                        ),
+                      ),
+                      errorWidget: Container(
+                        width: double.infinity,
+                        height: 220,
+                        color: Colors.white.withOpacity(0.1), // 修正linter错误，回退为withOpacity
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.broken_image_outlined, color: Colors.white.withOpacity(0.3), size: 40), // 修正linter错误，回退为withOpacity
+                            SizedBox(height: 8),
+                            Text(
+                              '图片加载失败\n${ApiService.buildImageUrl(topMonth['image_url'])}',
+                              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 10),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
                     )
                   : Container(
                       width: double.infinity,
                       height: 220,
-                      color: Colors.white.withAlpha(25),
-                      child: Icon(Icons.image_outlined, color: Colors.white.withAlpha(77), size: 40),
+                      color: Colors.white.withOpacity(0.1), // 修正linter错误，回退为withOpacity
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.image_outlined, color: Colors.white.withOpacity(0.3), size: 40), // 修正linter错误，回退为withOpacity
+                          SizedBox(height: 8),
+                          Text(
+                            '无图片',
+                            style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12),
+                          ),
+                        ],
+                      ),
                     ),
               // 毛玻璃遮罩
               BackdropFilter(
@@ -282,7 +324,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Container(
                   width: double.infinity,
                   height: 220,
-                  color: Colors.white.withAlpha(20),
+                  color: Colors.white.withOpacity(0.08), // 修正linter错误，回退为withOpacity
                 ),
               ),
               // 渐变遮罩
@@ -295,7 +337,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      Colors.black.withAlpha(210),
+                      Colors.black.withOpacity(0.82), // 修正linter错误，回退为withOpacity
                     ],
                   ),
                 ),
@@ -316,7 +358,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         fontWeight: FontWeight.bold,
                         shadows: [
                           Shadow(
-                            color: Colors.black.withAlpha(179),
+                            color: Colors.black.withOpacity(0.7), // 修正linter错误，回退为withOpacity
                             offset: Offset(0, 2),
                             blurRadius: 8,
                           ),
@@ -327,12 +369,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     Text(
                       topMonth['author'] ?? '',
                       style: TextStyle(
-                        color: Colors.white.withAlpha(217),
+                        color: Colors.white.withOpacity(0.85), // 修正linter错误，回退为withOpacity
                         fontSize: 18,
                         fontWeight: FontWeight.w400,
                         shadows: [
                           Shadow(
-                            color: Colors.black.withAlpha(102),
+                            color: Colors.black.withOpacity(0.4), // 修正linter错误，回退为withOpacity
                             offset: Offset(0, 1),
                             blurRadius: 3,
                           ),
@@ -343,11 +385,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     Text(
                       previewText,
                       style: TextStyle(
-                        color: Colors.white.withAlpha(242),
+                        color: Colors.white.withOpacity(0.95), // 修正linter错误，回退为withOpacity
                         fontSize: 18,
                         shadows: [
                           Shadow(
-                            color: Colors.black.withAlpha(128),
+                            color: Colors.black.withOpacity(0.5), // 修正linter错误，回退为withOpacity
                             offset: Offset(0, 1),
                             blurRadius: 4,
                           ),
@@ -390,17 +432,17 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.white.withAlpha(41),
+          color: Colors.white.withOpacity(0.16), // 修正linter错误，回退为withOpacity
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withAlpha(25),
+              color: Colors.black.withOpacity(0.1), // 修正linter错误，回退为withOpacity
               blurRadius: 16,
               offset: Offset(0, 4),
             ),
           ],
           border: Border.all(
-            color: Colors.white.withAlpha(46),
+            color: Colors.white.withOpacity(0.18), // 修正linter错误，回退为withOpacity
             width: 1,
           ),
         ),
@@ -411,7 +453,7 @@ class _HomeScreenState extends State<HomeScreen> {
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withAlpha(33),
+                  color: Colors.black.withOpacity(0.13), // 修正linter错误，回退为withOpacity
                   blurRadius: 8,
                   offset: Offset(0, 2),
                 ),
@@ -420,46 +462,29 @@ class _HomeScreenState extends State<HomeScreen> {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: poem['image_url'] != null
-                  ? Image.network(
-                      ApiService.buildImageUrl(poem['image_url']),
+                  ? SimpleNetworkImage(
+                      imageUrl: ApiService.buildImageUrl(poem['image_url']),
                       width: 56,
                       height: 56,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: 56,
-                          height: 56,
-                          color: Colors.white.withAlpha(25),
-                          child: Icon(Icons.image_not_supported, color: Colors.white.withAlpha(77), size: 28),
-                        );
-                      },
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Container(
-                          width: 56,
-                          height: 56,
-                          color: Colors.white.withAlpha(25),
-                          child: Center(
-                            child: SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                value: loadingProgress.expectedTotalBytes != null
-                                    ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                    : null,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white.withAlpha(77)),
-                                strokeWidth: 2,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
+                      placeholder: Container(
+                        width: 56,
+                        height: 56,
+                        color: Colors.white.withOpacity(0.1), // 修正linter错误，回退为withOpacity
+                        child: Icon(Icons.image_outlined, color: Colors.white.withOpacity(0.3), size: 28), // 修正linter错误，回退为withOpacity
+                      ),
+                      errorWidget: Container(
+                        width: 56,
+                        height: 56,
+                        color: Colors.white.withOpacity(0.1), // 修正linter错误，回退为withOpacity
+                        child: Icon(Icons.broken_image_outlined, color: Colors.white.withOpacity(0.3), size: 28), // 修正linter错误，回退为withOpacity
+                      ),
                     )
                   : Container(
                       width: 56,
                       height: 56,
-                      color: Colors.white.withAlpha(25),
-                      child: Icon(Icons.image_outlined, color: Colors.white.withAlpha(77), size: 28),
+                      color: Colors.white.withOpacity(0.1), // 修正linter错误，回退为withOpacity
+                      child: Icon(Icons.image_outlined, color: Colors.white.withOpacity(0.3), size: 28), // 修正linter错误，回退为withOpacity
                     ),
             ),
           ),
@@ -471,7 +496,7 @@ class _HomeScreenState extends State<HomeScreen> {
               fontSize: 17,
               shadows: [
                 Shadow(
-                  color: Colors.black.withAlpha(46),
+                  color: Colors.black.withOpacity(0.18), // 修正linter错误，回退为withOpacity
                   offset: Offset(0, 1),
                   blurRadius: 2,
                 ),
@@ -484,12 +509,12 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 poem['author'] ?? '',
                 style: TextStyle(
-                  color: Colors.white.withAlpha(217),
+                  color: Colors.white.withOpacity(0.85), // 修正linter错误，回退为withOpacity
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
                   shadows: [
                     Shadow(
-                      color: Colors.black.withAlpha(33),
+                      color: Colors.black.withOpacity(0.13), // 修正linter错误，回退为withOpacity
                       offset: Offset(0, 1),
                       blurRadius: 2,
                     ),
@@ -500,7 +525,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 previewText,
                 style: TextStyle(
-                  color: Colors.white.withAlpha(235),
+                  color: Colors.white.withOpacity(0.92), // 修正linter错误，回退为withOpacity
                   fontSize: 14,
                 ),
                 maxLines: 2,

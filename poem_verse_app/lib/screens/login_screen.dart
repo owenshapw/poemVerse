@@ -79,7 +79,7 @@ class LoginScreenState extends State<LoginScreen> {
           BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
             child: Container(
-              color: Colors.white.withAlpha(128),
+              color: Colors.white.withOpacity(0.5), // 修正linter错误，回退为withOpacity
             ),
           ),
           // 左上角返回按钮
@@ -105,15 +105,15 @@ class LoginScreenState extends State<LoginScreen> {
                 child: Container(
                   padding: EdgeInsets.all(32),
                   decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(38),
+                    color: Colors.white.withOpacity(0.15), // 修正linter错误，回退为withOpacity
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(
-                      color: Colors.white.withAlpha(51),
+                      color: Colors.white.withOpacity(0.2), // 修正linter错误，回退为withOpacity
                       width: 1,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withAlpha((255 * 0.1).round()),
+                        color: Colors.black.withOpacity(0.1), // 修正linter错误，回退为withOpacity
                         blurRadius: 20,
                         offset: Offset(0, 8),
                       ),
@@ -132,7 +132,7 @@ class LoginScreenState extends State<LoginScreen> {
                             color: Colors.white,
                             shadows: [
                               Shadow(
-                                color: Colors.black.withAlpha((255 * 0.3).round()),
+                                color: Colors.black.withOpacity(0.3), // 修正linter错误，回退为withOpacity
                                 offset: Offset(0, 2),
                                 blurRadius: 6,
                               ),
@@ -148,18 +148,18 @@ class LoginScreenState extends State<LoginScreen> {
                             prefixIcon: Icon(Icons.email, color: Colors.white70),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.white.withAlpha(77)),
+                              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)), // 修正linter错误，回退为withOpacity
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.white.withAlpha(77)),
+                              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)), // 修正linter错误，回退为withOpacity
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide(color: Colors.white),
                             ),
                             filled: true,
-                            fillColor: Colors.white.withAlpha(26),
+                            fillColor: Colors.white.withOpacity(0.1), // 修正linter错误，回退为withOpacity
                           ),
                           style: TextStyle(color: Colors.white),
                           validator: (value) {
@@ -182,18 +182,18 @@ class LoginScreenState extends State<LoginScreen> {
                             prefixIcon: Icon(Icons.lock, color: Colors.white70),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.white.withAlpha(77)),
+                              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)), // 修正linter错误，回退为withOpacity
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.white.withAlpha(77)),
+                              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)), // 修正linter错误，回退为withOpacity
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide(color: Colors.white),
                             ),
                             filled: true,
-                            fillColor: Colors.white.withAlpha(26),
+                            fillColor: Colors.white.withOpacity(0.1), // 修正linter错误，回退为withOpacity
                           ),
                           style: TextStyle(color: Colors.white),
                           validator: (value) {
@@ -213,7 +213,7 @@ class LoginScreenState extends State<LoginScreen> {
                           child: ElevatedButton(
                             onPressed: _isLoading ? null : _login,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white.withAlpha(51),
+                              backgroundColor: Colors.white.withOpacity(0.2), // 修正linter错误，回退为withOpacity
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -245,7 +245,7 @@ class LoginScreenState extends State<LoginScreen> {
                           child: Text(
                             '还没有账号？立即注册',
                             style: TextStyle(
-                              color: Colors.white.withAlpha((255 * 0.8).round()),
+                              color: Colors.white.withOpacity(0.8), // 修正linter错误，回退为withOpacity
                               fontSize: 14,
                             ),
                           ),
