@@ -167,20 +167,6 @@ ${_article.tags.isNotEmpty ? '标签：${_article.tags.join('、')}' : ''}
   }
 
   // 刷新文章
-  Future<void> _refreshArticle() async {
-    try {
-      final updated = await ApiService.getArticleDetail(_article.id);
-      if (mounted) {
-        setState(() {
-          _article = updated;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        _showErrorMessage('刷新失败：$e');
-      }
-    }
-  }
 
   // 编辑文章
   Future<void> _editArticle() async {
@@ -195,7 +181,9 @@ ${_article.tags.isNotEmpty ? '标签：${_article.tags.join('、')}' : ''}
     );
     
     if (updated == true && mounted) {
-      await _refreshArticle();
+      // 由于编辑逻辑是删除+创建，原文章ID已不存在
+      // 直接返回上一页，让列表页刷新
+      Navigator.of(context).pop();
     }
   }
 

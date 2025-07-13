@@ -215,7 +215,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
               },
             ),
-          );
+          ).then((_) {
+            // 从详情页返回时刷新主页数据
+            setState(() {
+              _homeDataFuture = ApiService.fetchHomeArticles();
+            });
+          });
         } catch (e) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -422,7 +427,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 article: Article.fromJson(poem),
               ),
             ),
-          );
+          ).then((_) {
+            // 从详情页返回时刷新主页数据
+            setState(() {
+              _homeDataFuture = ApiService.fetchHomeArticles();
+            });
+          });
         } catch (e) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('打开文章失败: $e')),

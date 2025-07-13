@@ -69,25 +69,17 @@ class ArticleProvider with ChangeNotifier {
   }
 
   Future<void> updateArticle(String token, String articleId, String title, String content, List<String> tags, String author, {String? previewImageUrl}) async {
-    final url = Uri.parse('${ApiService.baseUrl}/articles/$articleId');
-    final headers = {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-    };
-    final body = {
-      'title': title,
-      'content': content,
-      'tags': tags,
-      'author': author,
-      'preview_image_url': previewImageUrl,
-    };
-    final response = await ApiService.put(url, headers: headers, body: body);
-    if (response.statusCode != 200) {
-      throw Exception('更新失败: ${response.body}');
+    // 使用与新建相同的逻辑：先删除原文章，再创建新文章
+    try {
+      // 1. 删除原文章
+      await deleteArticle(token, articleId);
+      
+      // 2. 创建新文章（使用完全相同的逻辑）
+      await createArticle(token, title, content, tags, author, previewImageUrl: previewImageUrl);
+      
+    } catch (e) {
+      throw Exception('编辑失败: $e');
     }
-    
-    // 更新成功后刷新文章列表
-    await fetchArticles(token);
   }
 
   // 添加一个方法用于刷新所有相关数据
