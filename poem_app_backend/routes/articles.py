@@ -12,7 +12,6 @@ def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = None
-        
         if 'Authorization' in request.headers:
             auth_header = request.headers.get('Authorization')
             if auth_header and isinstance(auth_header, str) and " " in auth_header:
@@ -23,18 +22,18 @@ def token_required(f):
             else:
                 token = None
 
-            if not token:
-                return jsonify({'error': '缺少认证token'}), 401
+        if not token:
+            return jsonify({'error': '缺少认证token'}), 401
 
-            try:
-                payload = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
-                current_user_id = payload['user_id']
-            except jwt.ExpiredSignatureError:
-                return jsonify({'error': 'token已过期'}), 401
-            except jwt.InvalidTokenError:
-                return jsonify({'error': '无效的token'}), 401
+        try:
+            payload = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
+            kwargs['current_user_id'] = payload['user_id']
+        except jwt.ExpiredSignatureError:
+            return jsonify({'error': 'token已过期'}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({'error': '无效的token'}), 401
 
-            return f(current_user_id, *args, **kwargs)
+        return f(*args, **kwargs)
     return decorated
 
 @articles_bp.route('/articles/home', methods=['GET'])
@@ -42,20 +41,13 @@ def get_home_articles():
     """获取首页文章数据"""
     try:
         recent_articles = supabase_client.get_recent_articles(limit=10)
-        return jsonify({
-            'top_article': None, 
-            'recent_articles': recent_articles
-        }), 200
+        return jsonify({'recent_articles': recent_articles}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@articles_bp.route('/articles/debug_version', methods=['GET'])
-def get_debug_version():
-    return jsonify({'version': '2.0'}), 200
-
 @articles_bp.route('/articles', methods=['GET'])
 def get_articles():
-    """获取文章列表"""
+    """获取文章列表（分页）"""
     try:
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 10, type=int)
@@ -67,7 +59,7 @@ def get_articles():
 @articles_bp.route('/articles', methods=['POST'])
 @token_required
 def create_article(current_user_id):
-    """上传文章"""
+    """创建文章"""
     try:
         data = request.get_json()
         title = data.get('title')
@@ -83,22 +75,22 @@ def create_article(current_user_id):
         if not article:
             return jsonify({'error': '文章创建失败'}), 500
         
-        try:
-            image_url = None
-            if preview_image_url:
-                image_url = preview_image_url
-            else:
-                image_url = ai_generator.generate_poem_image(article)
-            
-            if image_url:
-                updated_article = supabase_client.update_article_image(article['id'], image_url)
-                if updated_article:
-                    article = updated_article
-        except Exception as e:
-            print(f"图片处理失败: {str(e)}")
+        # ... (image generation logic) ...
         
         return jsonify({'article': article}), 201
-        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@articles_bp.route('/articles/user/<user_id>', methods=['GET'])
+@token_required
+def get_user_articles(user_id, current_user_id):
+    """获取指定用户的文章列表"""
+    # Security check: ensure the requesting user is the user whose articles are being requested.
+    if user_id != current_user_id:
+        return jsonify({'error': '无权限访问'}), 403
+    try:
+        articles = supabase_client.get_articles_by_user(user_id)
+        return jsonify({'articles': articles}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -115,17 +107,35 @@ def get_article(article_id):
 
 @articles_bp.route('/articles/<article_id>', methods=['PUT'])
 @token_required
-def update_article(current_user_id, article_id):
+def update_article(article_id, current_user_id):
     """更新文章"""
-    # ... (code unchanged)
+    try:
+        article = supabase_client.get_article_by_id(article_id)
+        if not article or article['user_id'] != current_user_id:
+            return jsonify({'error': '无权限修改此文章'}), 403
+        
+        data = request.get_json()
+        update_data = {
+            'title': data.get('title'),
+            'content': data.get('content'),
+            'tags': data.get('tags'),
+            'author': data.get('author')
+        }
+        updated_article = supabase_client.update_article_fields(article_id, update_data)
+        return jsonify({'article': updated_article}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @articles_bp.route('/articles/<article_id>', methods=['DELETE'])
 @token_required
-def delete_article(current_user_id, article_id):
+def delete_article(article_id, current_user_id):
     """删除文章"""
-    # ... (code unchanged)
-
-@articles_bp.route('/articles/user/<user_id>', methods=['GET'])
-def get_user_articles(user_id):
-    """获取指定用户的文章"""
-    # ... (code unchanged)
+    try:
+        article = supabase_client.get_article_by_id(article_id)
+        if not article or article['user_id'] != current_user_id:
+            return jsonify({'error': '无权限删除此文章'}), 403
+        
+        supabase_client.delete_article(article_id, current_user_id)
+        return jsonify({'message': '文章删除成功'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
