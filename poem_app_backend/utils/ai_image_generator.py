@@ -72,14 +72,14 @@ class AIImageGenerator:
 
         # 固定使用现代抽象风格
         style_phrases = [
-            "modern abstract painting",
-            "minimalist composition",
-            "poetic atmosphere",
-            "negative space",
-            "soft brushstrokes",
-            "emotional abstraction"
+            "modern abstract ink painting",
+            "light composition",
+            "ethereal atmosphere",
+            "subtle gradients",
+            "minimalist brushwork",
+            "poetic serenity"
         ]
-        color_palette = "muted ink tones, soft grey-blues, warm beige, pale crimson"
+        color_palette = "fresh light tones, jade green, misty white, soft gold, sky blue"
 
         base_prompt = f"{', '.join(style_phrases)}, {', '.join(prompt_parts)}"
         if color_palette:

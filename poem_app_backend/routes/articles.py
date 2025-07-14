@@ -75,7 +75,19 @@ def create_article(current_user_id):
         if not article:
             return jsonify({'error': '文章创建失败'}), 500
         
-        # ... (image generation logic) ...
+        try:
+            image_url = None
+            if preview_image_url:
+                image_url = preview_image_url
+            else:
+                image_url = ai_generator.generate_poem_image(article)
+            
+            if image_url:
+                updated_article = supabase_client.update_article_image(article['id'], image_url)
+                if updated_article:
+                    article = updated_article
+        except Exception as e:
+            print(f"图片处理失败: {str(e)}")
         
         return jsonify({'article': article}), 201
     except Exception as e:
@@ -85,7 +97,6 @@ def create_article(current_user_id):
 @token_required
 def get_user_articles(user_id, current_user_id):
     """获取指定用户的文章列表"""
-    # Security check: ensure the requesting user is the user whose articles are being requested.
     if user_id != current_user_id:
         return jsonify({'error': '无权限访问'}), 403
     try:
