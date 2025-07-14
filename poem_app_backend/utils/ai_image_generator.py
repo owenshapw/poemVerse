@@ -72,7 +72,7 @@ class AIImageGenerator:
 
         # 固定使用现代抽象风格
         style_phrases = [
-            "sunlit abstract ink painting",
+            "sunlit abstract painting",
             "fluid brushstrokes with natural rhythm",
             "gentle white space",
             "elegant composition with breathing room",
@@ -80,7 +80,7 @@ class AIImageGenerator:
             "contemporary literati expression"
         ]
 
-        color_palette = "warm daylight tones, pale crimson, peach blush, golden ochre, jade green, light ivory, sun-washed paper"
+        color_palette = "warm daylight tones, pale crimson, peach blush, golden ochre, jade yellow, light ivory, sun-washed paper"
 
         base_prompt = f"{', '.join(style_phrases)}, {', '.join(prompt_parts)}"
         if color_palette:
