@@ -77,9 +77,16 @@ class AIImageGenerator:
             "ethereal atmosphere",
             "subtle gradients",
             "minimalist brushwork",
-            "poetic serenity"
+            "poetic serenity",
+            "fluid brushwork",
+            "bright and airy",
+            "delicate brushstrokes",
+            "soft focus",
+            "emotional abstraction",
+            "soft lighting",
+            "emotional abstraction",
         ]
-        color_palette = "fresh light tones, jade green, misty white, soft gold, sky blue"
+        color_palette = "colorful tones, warm jade, sky blue, pale gold, blush rose, verdant green, white space"
 
         base_prompt = f"{', '.join(style_phrases)}, {', '.join(prompt_parts)}"
         if color_palette:
