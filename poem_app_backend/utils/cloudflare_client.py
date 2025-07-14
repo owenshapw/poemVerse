@@ -72,7 +72,6 @@ class CloudflareClient:
             return image_bytes, 'image/png'
             
         except Exception as e:
-            print(f"❌ 图片格式转换失败: {e}")
             return None, 'image/png'
     
     def upload_file(self, file_data, filename, content_type=None):
@@ -81,17 +80,13 @@ class CloudflareClient:
         self._init_client()
         
         if not self.is_available():
-            print("❌ Cloudflare 不可用")
             return None
         
         try:
-            print(f"🔄 上传文件到 Cloudflare Images: {filename}")
-            
             # 自动检测和转换图片格式
             processed_data, final_content_type = self._process_image_data(file_data, filename)
             
             if processed_data is None:
-                print("❌ 图片处理失败，无法上传")
                 return None
             
             # 生成唯一的文件名（统一使用 PNG 扩展名）
@@ -132,20 +127,15 @@ class CloudflareClient:
                                 public_url = first_variant.replace('/list', '/public')
                             else:
                                 public_url = first_variant
-                        print(f"✅ 文件上传成功: {public_url}")
                         return public_url
                     else:
-                        print("❌ 未找到可用的变体URL")
                         return None
                 else:
-                    print(f"❌ Cloudflare 上传失败: {result.get('errors', [])}")
                     return None
             else:
-                print(f"❌ Cloudflare 上传失败: {response.status_code}")
                 return None
                 
         except Exception as e:
-            print(f"❌ 文件上传失败: {e}")
             return None
     
     def delete_file(self, image_id):
@@ -168,14 +158,11 @@ class CloudflareClient:
             )
             
             if response.status_code == 200:
-                print(f"✅ 文件删除成功: {image_id}")
                 return True
             else:
-                print(f"❌ 文件删除失败: {response.status_code}")
                 return False
                 
         except Exception as e:
-            print(f"❌ 文件删除失败: {e}")
             return False
     
     def is_available(self):
@@ -216,7 +203,6 @@ class CloudflareClient:
             return []
             
         except Exception as e:
-            print(f"获取文件列表失败: {e}")
             return []
     
     def get_public_url(self, image_id, variant='public'):

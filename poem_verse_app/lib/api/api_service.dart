@@ -17,7 +17,7 @@ class ApiService {
   static Future<Map<String, dynamic>> fetchHomeArticles() async {
     // 尝试主URL
     try {
-      final url = '${AppConfig.backendApiUrl}/articles/home';
+      final url = '${AppConfig.backendApiUrl}/articles'; // Use the standard articles endpoint
       
       final response = await http.get(
         Uri.parse(url),
@@ -41,7 +41,7 @@ class ApiService {
       
       // 如果是418错误或其他网络错误，尝试备用URL
       try {
-        final backupUrl = '${AppConfig.backupBackendBaseUrl}/api/articles/home';
+        final backupUrl = '${AppConfig.backupBackendBaseUrl}/api/articles'; // Use the standard articles endpoint
         
         final backupResponse = await http.get(
           Uri.parse(backupUrl),
@@ -62,6 +62,20 @@ class ApiService {
       } catch (backupError) {
         throw Exception('Failed to load home articles: $e -> $backupError');
       }
+    }
+  }
+
+  static Future<List<Article>> fetchArticles({int page = 1, int perPage = 10}) async {
+    final response = await http.get(
+      Uri.parse('${AppConfig.backendApiUrl}/articles?page=$page&per_page=$perPage'),
+      headers: {'Content-Type': 'application/json'},
+    );
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final articlesJson = data['articles'] as List;
+      return articlesJson.map((json) => Article.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load articles');
     }
   }
 
@@ -117,6 +131,30 @@ class ApiService {
     }
   }
 
+  static Future<void> forgotPassword(String email) async {
+    final url = Uri.parse('${AppConfig.backendApiUrl}/auth/forgot-password');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'email': email}),
+    );
+    if (response.statusCode != 200) {
+      throw Exception(json.decode(response.body)['error'] ?? '发送邮件失败');
+    }
+  }
+
+  static Future<void> resetPassword(String token, String newPassword) async {
+    final url = Uri.parse('${AppConfig.backendApiUrl}/auth/reset-password');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'token': token, 'new_password': newPassword}),
+    );
+    if (response.statusCode != 200) {
+      throw Exception(json.decode(response.body)['error'] ?? '重置密码失败');
+    }
+  }
+
   static Future<http.Response> getArticles(String token) async {
     return await http.get(
       Uri.parse('${AppConfig.backendApiUrl}/articles'),
@@ -127,7 +165,7 @@ class ApiService {
     );
   }
 
-  static Future<http.Response> createArticle(
+  static Future<Article?> createArticle(
       String token, String title, String content, List<String> tags, String author, {String? previewImageUrl}) async {
     final Map<String, dynamic> body = {
       'title': title,
@@ -136,12 +174,11 @@ class ApiService {
       'author': author,
     };
     
-    // 如果提供了预览图片URL，添加到请求体中
     if (previewImageUrl != null) {
       body['preview_image_url'] = previewImageUrl;
     }
     
-    return await http.post(
+    final response = await http.post(
       Uri.parse('${AppConfig.backendApiUrl}/articles'),
       headers: {
         'Content-Type': 'application/json; charset=UTF-8',
@@ -149,6 +186,13 @@ class ApiService {
       },
       body: jsonEncode(body),
     );
+
+    if (response.statusCode == 201) {
+      final data = json.decode(response.body);
+      return Article.fromJson(data['article']);
+    } else {
+      return null;
+    }
   }
 
   static Future<http.Response> generateImage(String token, String articleId) async {
@@ -197,6 +241,14 @@ class ApiService {
       headers: headers,
       body: jsonEncode(body),
     );
+  }
+
+  static String getImageUrlWithVariant(String? imageUrl, String variant) {
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return '';
+    }
+    String fullUrl = buildImageUrl(imageUrl);
+    return fullUrl.replaceAll('headphoto', variant);
   }
 
   static String buildImageUrl(String? imageUrl) {

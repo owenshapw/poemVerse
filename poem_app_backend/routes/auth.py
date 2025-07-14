@@ -20,31 +20,22 @@ def register():
     """用户注册"""
     try:
         data = request.get_json()
-        print(f"Received registration data: {data}")
         email = data.get('email')
         password = data.get('password')
         username = data.get('username', email.split('@')[0])  # 如果没有username，使用邮箱前缀
-        
-        print(f"Processing registration for email: {email}, username: {username}")
-        
+
         if not email or not password:
             return jsonify({'error': '邮箱和密码不能为空'}), 400
         
         # 检查邮箱是否已存在
-        print("Checking if user exists...")
         existing_user = supabase_client.get_user_by_email(email)
         if existing_user:
-            print(f"User already exists: {existing_user['email']}")
             return jsonify({'error': '该邮箱已被注册'}), 400
         
         # 创建新用户
-        print("Creating new user...")
         user = supabase_client.create_user(email, password, username)
         if not user:
-            print("Failed to create user")
             return jsonify({'error': '用户创建失败'}), 500
-        
-        print(f"User created successfully: {user['id']}")
         
         # 生成token
         token = generate_token(user['id'])
@@ -60,7 +51,6 @@ def register():
         }), 201
         
     except Exception as e:
-        print(f"Registration error: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
@@ -70,27 +60,18 @@ def login():
     """用户登录"""
     try:
         data = request.get_json()
-        print(f"Login request data: {data}")
         email = data.get('email')
         password = data.get('password')
-        
-        print(f"Attempting login for email: {email}")
-        
+
         if not email or not password:
             return jsonify({'error': '邮箱和密码不能为空'}), 400
         
         # 获取用户
-        print("Looking up user...")
         user = supabase_client.get_user_by_email(email)
         if not user:
-            print(f"User not found for email: {email}")
             return jsonify({'error': '用户不存在'}), 404
-        print("Verifying password...")
         if not bcrypt.checkpw(password.encode('utf-8'), user['password_hash'].encode('utf-8')):
-            print("Password verification failed")
             return jsonify({'error': '密码错误'}), 401
-        
-        print("Password verified successfully")
         
         # 生成token
         token = generate_token(user['id'])
@@ -106,7 +87,6 @@ def login():
         }), 200
         
     except Exception as e:
-        print(f"Login error: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
@@ -137,7 +117,7 @@ def forgot_password():
         )
         
         # 发送重置邮件
-        reset_url = f"https://your-frontend-domain.com/reset-password?token={reset_token}"
+        reset_url = f"poemverse://reset-password?token={reset_token}"
         subject = "诗篇 - 密码重置"
         body = f"""
         您好，

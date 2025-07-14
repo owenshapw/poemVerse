@@ -32,7 +32,6 @@ def send_email(to_email: str, subject: str, body: str):
         return True
         
     except Exception as e:
-        print(f"发送邮件失败: {str(e)}")
         return False
 
 def send_welcome_email(email: str, username: str):

@@ -22,7 +22,6 @@ def upload_image():
     
     # 优先使用 Cloudflare Images
     if cloudflare_client.is_available():
-        print("使用 Cloudflare Images 上传文件")
         content_type = file.content_type or 'application/octet-stream'
         public_url = cloudflare_client.upload_file(
             file_data,
@@ -30,23 +29,19 @@ def upload_image():
             content_type
         )
     else:
-        print("Cloudflare Images 不可用，回退到 Supabase")
         # 回退到 Supabase
         bucket = "images"
         # 检查 supabase_client 是否初始化
         if not supabase_client.supabase:
-            print("⚠️ Supabase 客户端未初始化，尝试重新初始化...")
             try:
                 from supabase.client import create_client
                 supabase_url = os.getenv("SUPABASE_URL")
                 supabase_key = os.getenv("SUPABASE_KEY")
                 if supabase_url and supabase_key:
                     supabase_client.supabase = create_client(supabase_url, supabase_key)
-                    print("✅ Supabase 客户端重新初始化成功")
                 else:
                     return jsonify({'error': 'Supabase 环境变量未配置'}), 500
             except Exception as e:
-                print(f"❌ Supabase 客户端重新初始化失败: {e}")
                 return jsonify({'error': 'Supabase 客户端初始化失败'}), 500
         
         # 再次检查客户端是否可用
@@ -68,7 +63,7 @@ def upload_image():
         m = re.search(r'imagedelivery\.net/[^/]+/([\w-]+)/public', url)
         if m:
             image_id = m.group(1)
-            return f"https://images.shipian.app/images/{image_id}/public"
+            return f"https://images.shipian.app/images/{image_id}/headphoto"
         return url
 
     if public_url:

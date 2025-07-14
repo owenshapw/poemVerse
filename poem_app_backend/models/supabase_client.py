@@ -1,7 +1,7 @@
 from supabase.client import create_client, Client
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 import bcrypt
 from typing import Optional, Union
 import re
@@ -44,15 +44,15 @@ class SupabaseClient:
         result = self.supabase.table('users').select('*').eq('id', user_id).execute()
         return result.data[0] if result.data else None
 
-    def _format_image_url(self, url: str) -> str:
-        """将Cloudflare图片URL统一为自定义域名格式"""
+    def _format_image_url(self, url: Optional[str]) -> str:
+        """将Cloudflare图片URL统一为自定义域名格式，并确保返回非None值"""
         if not url:
-            return url
-        # 匹配Cloudflare Images的image_id
-        m = re.search(r'imagedelivery\.net/[^/]+/([\w-]+)/public', url)
+            return ""
+        m = re.search(r'imagedelivery.net/([^/]+)/([^/]+)/public', url)
         if m:
-            image_id = m.group(1)
-            return f"https://images.shipian.app/images/{image_id}/public"
+            account_hash = m.group(1)
+            image_id = m.group(2)
+            return f"https://imagedelivery.net/{account_hash}/{image_id}/headphoto"
         return url
 
     def create_article(self, user_id: str, title: str, content: str, tags: list, author: Optional[str] = None):
@@ -71,7 +71,8 @@ class SupabaseClient:
             'content': content,
             'tags': tags,
             'image_url': None,
-            'created_at': datetime.utcnow().isoformat()
+            'created_at': datetime.utcnow().isoformat(),
+            'like_count': 0
         }
         try:
             article_data['author'] = author_name
@@ -80,11 +81,13 @@ class SupabaseClient:
         result = self.supabase.table('articles').insert(article_data).execute()
         return result.data[0] if result.data else None
 
-    def get_all_articles(self):
-        """获取所有文章"""
+    def get_all_articles(self, page: int = 1, per_page: int = 10):
+        """获取所有文章（支持分页）"""
         if self.supabase is None:
             raise RuntimeError("Supabase client not initialized. Call init_app() first.")
-        result = self.supabase.table('articles').select('*').order('created_at', desc=True).execute()
+        start_index = (page - 1) * per_page
+        end_index = start_index + per_page - 1
+        result = self.supabase.table('articles').select('*').order('created_at', desc=True).range(start_index, end_index).execute()
         return result.data
 
     def get_article_by_id(self, article_id: str):
@@ -108,7 +111,7 @@ class SupabaseClient:
         result = self.supabase.table('articles').delete().eq('id', article_id).eq('user_id', user_id).execute()
         return len(result.data) > 0
 
-    def update_article_image(self, article_id: str, image_url: str):
+    def update_article_image(self, article_id: str, image_url: Optional[str]):
         """更新文章图片URL，写入前统一格式"""
         if self.supabase is None:
             raise RuntimeError("Supabase client not initialized. Call init_app() first.")
@@ -144,22 +147,11 @@ class SupabaseClient:
         result = self.supabase.table('comments').select('*').eq('article_id', article_id).order('created_at', desc=True).execute()
         return result.data
 
-    def get_top_month_article(self):
-        """获取本月最热门的文章"""
+    def get_recent_articles(self, limit=10):
+        """获取最新的文章列表"""
         if self.supabase is None:
             raise RuntimeError("Supabase client not initialized. Call init_app() first.")
-        from datetime import datetime, timedelta
-        one_month_ago = datetime.utcnow() - timedelta(days=30)
-        result = self.supabase.table('articles').select('*').gte('created_at', one_month_ago.isoformat()).order('created_at', desc=True).limit(1).execute()
-        return result.data[0] if result.data else None
-
-    def get_top_week_articles(self):
-        """获取本周热门文章列表"""
-        if self.supabase is None:
-            raise RuntimeError("Supabase client not initialized. Call init_app() first.")
-        from datetime import datetime, timedelta
-        one_week_ago = datetime.utcnow() - timedelta(days=7)
-        result = self.supabase.table('articles').select('*').gte('created_at', one_week_ago.isoformat()).order('created_at', desc=True).limit(10).execute()
+        result = self.supabase.table('articles').select('*').order('created_at', desc=True).limit(limit).execute()
         return result.data
 
     def delete_comment(self, comment_id):
@@ -181,4 +173,4 @@ class SupabaseClient:
             return result.data[0]
         return None
 
-supabase_client = SupabaseClient() 
+supabase_client = SupabaseClient()

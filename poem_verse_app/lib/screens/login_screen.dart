@@ -1,7 +1,8 @@
 // lib/screens/login_screen.dart
-// ignore_for_file: deprecated_member_use
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously
 
 import 'package:flutter/material.dart';
+import 'package:poem_verse_app/api/api_service.dart';
 import 'package:provider/provider.dart';
 import 'package:poem_verse_app/providers/auth_provider.dart';
 import 'package:poem_verse_app/screens/register_screen.dart';
@@ -252,6 +253,17 @@ class LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ),
+                        SizedBox(height: 8),
+                        TextButton(
+                          onPressed: _showForgotPasswordDialog,
+                          child: Text(
+                            '忘记密码？',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.8),
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -261,6 +273,46 @@ class LoginScreenState extends State<LoginScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showForgotPasswordDialog() {
+    final emailController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('找回密码'),
+          content: TextField(
+            controller: emailController,
+            decoration: InputDecoration(hintText: '请输入您的邮箱'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('取消'),
+            ),
+            TextButton(
+              onPressed: () async {
+                try {
+                  await ApiService.forgotPassword(emailController.text);
+                  if (!mounted) return;
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('重置邮件已发送，请查收')),
+                  );
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('操作失败: $e')),
+                  );
+                }
+              },
+              child: Text('发送'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

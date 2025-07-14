@@ -105,20 +105,17 @@ def generate_preview(current_user_id):
         }
         
         # 使用AI图片生成预览
-        print("🎨 尝试AI图片生成预览...")
         image_url = ai_generator.generate_poem_image(temp_article)
         
         if not image_url:
             return jsonify({'error': 'AI预览图片生成失败'}), 500
         
-        print(f"✅ 预览图片生成成功: {image_url}")
         return jsonify({
             'message': '预览图片生成成功',
             'preview_url': image_url
         }), 200
         
     except Exception as e:
-        print(f"❌ 预览图片生成异常: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500 
