@@ -43,16 +43,19 @@ class AIImageGenerator:
         canvas_style = "The entire image rendered on a raw canvas texture, with the visible grain of the fabric showing through"
         
         # 色彩与氛围
-        mood_style = "Bright, luminous, and vibrant color palette, joyful, cheerful, and uplifting mood"
+        mood_style = "Bright, luminous, and vibrant color palette, sun-drenched colors, joyful, cheerful, and uplifting mood"
         
+        # 构图与留白
+        composition_style = "Airy and spacious composition, uncluttered, significant negative space, over 60% of the image is clean white space, especially around the borders"
+
         # 品质要求
         quality = "high resolution, masterpiece, detailed, artistic"
 
         # 组合提示词
-        prompt = f"{line_style}, {dot_style}, {color_field_style}, {canvas_style}, {mood_style}, {quality}"
+        prompt = f"{line_style}, {dot_style}, {color_field_style}, {canvas_style}, {mood_style}, {composition_style}, {quality}"
         
         # 负面提示词
-        negative_prompt = "dark, gloomy, somber, grayscale, monochrome, depressing, sad, text, words, letters, low quality, blurry, distorted, ugly, deformed, figurative, representation, landscape, figurative painting, photo, realism"
+        negative_prompt = "dark, gloomy, somber, deep shadows, gray, muted tones, depressing, sad, text, words, letters, low quality, blurry, distorted, ugly, deformed, figurative, representation, landscape, figurative painting, photo, realism"
         
         return prompt, negative_prompt
 
