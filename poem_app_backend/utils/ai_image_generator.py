@@ -32,12 +32,6 @@ class AIImageGenerator:
     def generate_prompt_from_poem(self, title, content, tags):
         style_phrases = [
             "lyrical abstract painting",
-            "Helen Frankenthaler"
-            "Sam Francis",
-            "Cy Twombly",
-            "Joan Mitchell",
-            "Franz Kline",
-            "Lee Krasner",
             "dynamic gestural lines",
             "floating speckles of color",
             "dry-brush strokes on coarse canvas",
@@ -47,7 +41,7 @@ class AIImageGenerator:
 
         color_palette = "sky blue, blush pink, ochre yellow, lavender grey, pale jade, ivory white"
 
-        base_prompt = f"{', '.join(style_phrases)}, {color_palette}, high quality, sharp, balanced composition"
+        base_prompt = f"{', '.join(style_phrases)}, {color_palette}, high quality, artistic, balanced composition"
         negative_prompt = "text, words, letters, low quality, blurry, distorted, ugly, deformed"
 
         return base_prompt, negative_prompt
