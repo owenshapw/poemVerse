@@ -11,6 +11,7 @@ import 'dart:ui';
 import 'package:flutter/services.dart';
 import 'package:poem_verse_app/screens/login_screen.dart';
 import 'package:poem_verse_app/widgets/simple_network_image.dart';
+import 'package:poem_verse_app/screens/poem_magazine_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -137,17 +138,32 @@ class _HomeScreenState extends State<HomeScreen> {
           Positioned(
             top: 56,
             right: 16,
-            child: IconButton(
-              icon: const Icon(Icons.person_outline, color: Colors.white, size: 28),
-              tooltip: '登录',
-              onPressed: () {
-                if (mounted) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const LoginScreen()),
-                  );
-                }
-              },
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.menu_book, color: Colors.white, size: 28),
+                  tooltip: '杂志风格Demo',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => PoemMagazineScreen()),
+                    );
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.person_outline, color: Colors.white, size: 28),
+                  tooltip: '登录',
+                  onPressed: () {
+                    if (mounted) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const LoginScreen()),
+                      );
+                    }
+                  },
+                ),
+              ],
             ),
           ),
         ],

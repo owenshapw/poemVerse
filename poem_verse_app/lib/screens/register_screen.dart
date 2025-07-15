@@ -30,7 +30,7 @@ class RegisterScreenState extends State<RegisterScreen> {
     final username = _usernameController.text;
     final email = _emailController.text;
     final password = _passwordController.text;
-    final success = await authProvider.register(username, email, password);
+    final success = await authProvider.register(email, password, username);
     
     if (!mounted) return;
     if (success && mounted) {
