@@ -31,16 +31,15 @@ class AIImageGenerator:
 
     def generate_prompt_from_poem(self, title, content, tags):
         style_phrases = [
-            "geometric abstraction inspired by Piet Mondrian and Mark Rothko",
-            "composition of clean, bold straight lines",
-            "large and small geometric color fields",
-            "translucent, luminous colors",
-            "vibrant colorful speckles scattered sparingly",
-            "minimalist and elegant design",
-            "significant negative space, over 40% white, especially around the borders"
+            "lyrical abstract painting",
+            "dynamic gestural lines",
+            "floating speckles of color",
+            "dry-brush strokes on coarse canvas",
+            "light color fields with painterly texture",
+            "playful composition with vibrant rhythm"
         ]
 
-        color_palette = "ivory white, cobalt blue, lemon yellow, crimson red, sky grey, subtle lavender"
+        color_palette = "sky blue, blush pink, ochre yellow, lavender grey, pale jade, ivory white"
 
         base_prompt = f"{', '.join(style_phrases)}, {color_palette}, high quality, sharp, balanced composition"
         negative_prompt = "text, words, letters, low quality, blurry, distorted, ugly, deformed"
