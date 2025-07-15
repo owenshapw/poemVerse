@@ -32,6 +32,12 @@ class AIImageGenerator:
     def generate_prompt_from_poem(self, title, content, tags):
         style_phrases = [
             "lyrical abstract painting",
+            "Helen Frankenthaler"
+            "Sam Francis",
+            "Cy Twombly",
+            "Joan Mitchell",
+            "Franz Kline",
+            "Lee Krasner",
             "dynamic gestural lines",
             "floating speckles of color",
             "dry-brush strokes on coarse canvas",
