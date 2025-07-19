@@ -173,4 +173,30 @@ class SupabaseClient:
             return result.data[0]
         return None
 
+    def register_with_supabase_auth(self, email: str, password: str, username: Union[str, None] = None):
+        """
+        1. 通过Supabase Auth注册（auth.users）
+        2. 在users表和public.users表各插入一份用户信息
+        """
+        if self.supabase is None:
+            raise RuntimeError("Supabase client not initialized. Call init_app() first.")
+        # 1. Supabase Auth注册
+        auth_result = self.supabase.auth.sign_up({"email": email, "password": password})
+        if not auth_result or not getattr(auth_result, 'user', None):
+            raise Exception("Supabase Auth注册失败")
+        user_id = auth_result.user.id
+        user_email = auth_result.user.email
+        # 2. 插入users表
+        user_data = {
+            'id': user_id,
+            'email': user_email,
+            'created_at': datetime.utcnow().isoformat()
+        }
+        if username:
+            user_data['username'] = username
+        self.supabase.table('users').insert(user_data).execute()
+        # 3. 插入public.users表
+        self.supabase.table('public.users').insert(user_data).execute()
+        return user_data
+
 supabase_client = SupabaseClient()

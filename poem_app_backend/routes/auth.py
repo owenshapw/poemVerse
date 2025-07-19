@@ -17,7 +17,7 @@ def generate_token(user_id: str):
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
-    """用户注册"""
+    """用户注册（Supabase Auth + users表 + public.users表）"""
     try:
         data = request.get_json()
         email = data.get('email')
@@ -26,20 +26,16 @@ def register():
 
         if not email or not password:
             return jsonify({'error': '邮箱和密码不能为空'}), 400
-        
         # 检查邮箱是否已存在
         existing_user = supabase_client.get_user_by_email(email)
         if existing_user:
             return jsonify({'error': '该邮箱已被注册'}), 400
-        
-        # 创建新用户
-        user = supabase_client.create_user(email, password, username)
+        # 新注册流程
+        user = supabase_client.register_with_supabase_auth(email, password, username)
         if not user:
             return jsonify({'error': '用户创建失败'}), 500
-        
         # 生成token
         token = generate_token(user['id'])
-        
         return jsonify({
             'message': '注册成功',
             'token': token,
@@ -49,7 +45,6 @@ def register():
                 'username': user.get('username', '')
             }
         }), 201
-        
     except Exception as e:
         import traceback
         traceback.print_exc()
