@@ -59,7 +59,7 @@ def register():
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
-    """用户登录"""
+    """用户登录（Supabase Auth）"""
     try:
         data = request.get_json()
         email = data.get('email')
@@ -68,28 +68,28 @@ def login():
         if not email or not password:
             return jsonify({'error': '邮箱和密码不能为空'}), 400
 
-        # 获取用户
-        user = supabase_client.get_user_by_email(email)
-        if not user:
-            return jsonify({'error': '用户不存在'}), 404
-        if not bcrypt.checkpw(
-                password.encode('utf-8'),
-                user['password_hash'].encode('utf-8')):
-            return jsonify({'error': '密码错误'}), 401
-
+        # 用Supabase Auth校验邮箱和密码
+        auth_result = supabase_client.supabase.auth.sign_in_with_password({
+            "email": email,
+            "password": password
+        })
+        if not auth_result or not getattr(auth_result, 'user', None):
+            return jsonify({'error': '邮箱或密码错误'}), 401
+        user_id = auth_result.user.id
+        user_email = auth_result.user.email
+        # 从自建users表查更多信息
+        user_info = supabase_client.get_user_by_id(user_id)
         # 生成token
-        token = generate_token(user['id'])
-
+        token = generate_token(user_id)
         return jsonify({
             'message': '登录成功',
             'token': token,
             'user': {
-                'id': user['id'],
-                'email': user['email'],
-                'username': user.get('username', '')
+                'id': user_id,
+                'email': user_email,
+                'username': user_info.get('username', '') if user_info else ''
             }
         }), 200
-
     except Exception as e:
         import traceback
         traceback.print_exc()
