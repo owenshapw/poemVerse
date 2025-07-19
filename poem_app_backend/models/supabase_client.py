@@ -169,9 +169,9 @@ class SupabaseClient:
         auth_result = self.supabase.auth.sign_up({"email": email, "password": password})
         if not auth_result or not getattr(auth_result, 'user', None):
             raise Exception("Supabase Auth注册失败")
-        user_id = auth_result.user.id
+        user_id = auth_result.user.id  # 用auth返回的id
         user_email = auth_result.user.email
-        # 2. 插入users表
+        # 2. 插入users表，id用auth返回的id
         user_data = {
             'id': user_id,
             'email': user_email,
@@ -180,8 +180,6 @@ class SupabaseClient:
         if username:
             user_data['username'] = username
         self.supabase.table('users').insert(user_data).execute()
-        # 删除插入public.users表的代码
-        # self.supabase.table('public.users').insert(user_data).execute()
         return user_data
 
 supabase_client = SupabaseClient()
