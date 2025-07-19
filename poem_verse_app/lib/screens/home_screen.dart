@@ -138,32 +138,17 @@ class _HomeScreenState extends State<HomeScreen> {
           Positioned(
             top: 56,
             right: 16,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.menu_book, color: Colors.white, size: 28),
-                  tooltip: '杂志风格Demo',
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => PoemMagazineScreen()),
-                    );
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.person_outline, color: Colors.white, size: 28),
-                  tooltip: '登录',
-                  onPressed: () {
-                    if (mounted) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const LoginScreen()),
-                      );
-                    }
-                  },
-                ),
-              ],
+            child: IconButton(
+              icon: const Icon(Icons.person_outline, color: Colors.white, size: 28),
+              tooltip: '登录',
+              onPressed: () {
+                if (mounted) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LoginScreen()),
+                  );
+                }
+              },
             ),
           ),
         ],

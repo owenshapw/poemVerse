@@ -54,7 +54,7 @@ class RegisterScreenState extends State<RegisterScreen> {
         title: Text('注册'),
         centerTitle: true,
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
