@@ -22,21 +22,6 @@ class SupabaseClient:
         result = self.supabase.table('users').select('*').eq('email', email).execute()
         return result.data[0] if result.data else None
 
-    def create_user(self, email: str, password: str, username: Union[str, None] = None):
-        if self.supabase is None:
-            raise RuntimeError("Supabase client not initialized. Call init_app() first.")
-        password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-        user_data = {
-            'id': str(uuid.uuid4()),
-            'email': email,
-            'password_hash': password_hash,
-            'created_at': datetime.utcnow().isoformat()
-        }
-        if username:
-            user_data['username'] = username
-        result = self.supabase.table('users').insert(user_data).execute()
-        return result.data[0] if result.data else None
-
     def get_user_by_id(self, user_id: str):
         """根据ID获取用户"""
         if self.supabase is None:
