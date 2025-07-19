@@ -180,8 +180,8 @@ class SupabaseClient:
         if username:
             user_data['username'] = username
         self.supabase.table('users').insert(user_data).execute()
-        # 3. 插入public.users表
-        self.supabase.table('public.users').insert(user_data).execute()
+        # 删除插入public.users表的代码
+        # self.supabase.table('public.users').insert(user_data).execute()
         return user_data
 
 supabase_client = SupabaseClient()

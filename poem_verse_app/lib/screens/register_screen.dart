@@ -26,11 +26,12 @@ class RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final username = _usernameController.text;
     final email = _emailController.text;
     final password = _passwordController.text;
-    final success = await authProvider.register(email, password, username);
+    // 修正参数顺序，确保传递给后端的是 (email, password, username)
+    final success = await Provider.of<AuthProvider>(context, listen: false)
+        .register(email, password, username);
     
     if (!mounted) return;
     if (success && mounted) {
