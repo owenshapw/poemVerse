@@ -6,6 +6,9 @@ import 'package:poem_verse_app/providers/auth_provider.dart';
 import 'package:poem_verse_app/config/app_config.dart';
 import 'package:poem_verse_app/models/article.dart';
 import 'package:poem_verse_app/widgets/network_image_with_dio.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:dio/dio.dart';
 
 class CreateArticleScreen extends StatefulWidget {
   final Article? article;
@@ -203,6 +206,51 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
     }
   }
 
+  Future<void> _pickAndUploadImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile == null) return;
+    final file = File(pickedFile.path);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final token = authProvider.token;
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('请先登录')),
+      );
+      return;
+    }
+    try {
+      final dio = Dio();
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(file.path, filename: file.path.split('/').last),
+      });
+      final response = await dio.post(
+        AppConfig.backendApiUrl + '/upload_image',
+        data: formData,
+        options: Options(headers: {
+          'Authorization': 'Bearer $token',
+        }),
+      );
+      final url = response.data['url'];
+      if (url != null) {
+        setState(() {
+          _previewImageUrl = url;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('图片上传成功！')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('图片上传失败')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('图片上传失败: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -332,17 +380,28 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
               SizedBox(height: 16),
             ],
             
-            // 生成预览按钮
+            // 生成预览/AI配图和上传图片按钮
             if (_previewImageUrl == null)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _isGeneratingPreview ? null : _generatePreview,
-                  icon: _isGeneratingPreview 
-                    ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                    : Icon(Icons.preview),
-                  label: Text(_isGeneratingPreview ? '生成中...' : '生成预览'),
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _isGeneratingPreview ? null : _generatePreview,
+                      icon: _isGeneratingPreview 
+                        ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        : Icon(Icons.auto_awesome),
+                      label: Text(_isGeneratingPreview ? 'AI配图中...' : 'AI配图'),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _pickAndUploadImage,
+                      icon: Icon(Icons.upload_file),
+                      label: Text('上传图片'),
+                    ),
+                  ),
+                ],
               ),
             
             SizedBox(height: 16),

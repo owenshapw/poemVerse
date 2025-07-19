@@ -5,6 +5,7 @@ import 'package:poem_verse_app/providers/auth_provider.dart';
 import 'package:poem_verse_app/providers/article_provider.dart';
 import 'package:poem_verse_app/screens/home_screen.dart';
 import 'package:poem_verse_app/screens/reset_password_screen.dart';
+import 'package:poem_verse_app/screens/login_screen.dart';
 
 void main() {
   runApp(const PoemVerseApp());
@@ -25,6 +26,9 @@ class PoemVerseApp extends StatelessWidget {
           primarySwatch: Colors.blue,
         ),
         home: const HomeScreen(),
+        routes: {
+          '/login': (context) => const LoginScreen(),
+        },
         onGenerateRoute: (settings) {
           if (settings.name != null && settings.name!.startsWith('/reset-password')) {
             final uri = Uri.parse(settings.name!);
