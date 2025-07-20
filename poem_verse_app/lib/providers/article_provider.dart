@@ -28,7 +28,7 @@ class ArticleProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final articlesData = await ApiService.fetchHomeArticles();
+      final articlesData = await ApiService.fetchArticlesByAuthorCount(limit: 10);
       developer.log('API Response: ${jsonEncode(articlesData)}', name: 'ArticleProvider');
 
       final articlesList = articlesData['articles'] as List?;

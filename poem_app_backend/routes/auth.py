@@ -4,7 +4,7 @@ import bcrypt
 import jwt
 from datetime import datetime, timedelta
 from utils.mail import send_email
-import builtins
+from builtins import str, getattr, Exception
 
 auth_bp = Blueprint('auth', __name__)
 

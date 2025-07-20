@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:poem_verse_app/screens/login_screen.dart';
 import 'package:poem_verse_app/widgets/simple_network_image.dart';
 import 'package:poem_verse_app/screens/poem_magazine_screen.dart';
+import 'package:poem_verse_app/screens/author_works_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -295,7 +296,7 @@ class _HomeScreenState extends State<HomeScreen> {
       List<Article> articles) {
     String content = article.content;
     List<String> lines = content.split('\n');
-    String previewText = lines.take(3).join('\n');
+    String previewText = lines.take(1).join('\n');
     
     return GestureDetector(
       onTap: () {
@@ -303,9 +304,9 @@ class _HomeScreenState extends State<HomeScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => ArticleDetailScreen(
-                articles: articles,
-                initialIndex: index,
+              builder: (_) => AuthorWorksScreen(
+                author: article.author,
+                initialArticle: article,
               ),
             ),
           ).then((_) {
@@ -323,6 +324,7 @@ class _HomeScreenState extends State<HomeScreen> {
       },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        height: 80,
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.16),
           borderRadius: BorderRadius.circular(18),
@@ -338,97 +340,111 @@ class _HomeScreenState extends State<HomeScreen> {
             width: 1,
           ),
         ),
-        child: ListTile(
-          contentPadding: const EdgeInsets.all(14),
-          leading: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.13),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: article.imageUrl.isNotEmpty
-                  ? SimpleNetworkImage(
-                      imageUrl:
-                          ApiService.getImageUrlWithVariant(article.imageUrl, 'list'),
-                      width: 56,
-                      height: 56,
-                      fit: BoxFit.cover,
-                      placeholder: Container(
-                        width: 56,
-                        height: 56,
-                        color: Colors.white.withOpacity(0.1),
-                        child: Icon(Icons.image_outlined,
-                            color: Colors.white.withOpacity(0.3), size: 28),
-                      ),
-                      errorWidget: Container(
-                        width: 56,
-                        height: 56,
-                        color: Colors.white.withOpacity(0.1),
-                        child: Icon(Icons.broken_image_outlined,
-                            color: Colors.white.withOpacity(0.3), size: 28),
-                      ),
-                    )
-                  : Container(
-                      width: 56,
-                      height: 56,
-                      color: Colors.white.withOpacity(0.1),
-                      child: Icon(Icons.image_outlined,
-                          color: Colors.white.withOpacity(0.3), size: 28),
+        child: Row(
+          children: [
+            // 左侧图片 - 占三分之一宽度
+            Expanded(
+              flex: 1,
+              child: Container(
+                margin: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.13),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
-            ),
-          ),
-          title: Text(
-            article.title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-              fontSize: 17,
-              shadows: [
-                Shadow(
-                  color: Colors.black12,
-                  offset: Offset(0, 1),
-                  blurRadius: 2,
+                  ],
                 ),
-              ],
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: article.imageUrl.isNotEmpty
+                      ? SimpleNetworkImage(
+                          imageUrl:
+                              ApiService.getImageUrlWithVariant(article.imageUrl, 'list'),
+                          fit: BoxFit.cover,
+                          placeholder: Container(
+                            color: Colors.white.withOpacity(0.1),
+                            child: Icon(Icons.image_outlined,
+                                color: Colors.white.withOpacity(0.3), size: 28),
+                          ),
+                          errorWidget: Container(
+                            color: Colors.white.withOpacity(0.1),
+                            child: Icon(Icons.broken_image_outlined,
+                                color: Colors.white.withOpacity(0.3), size: 28),
+                          ),
+                        )
+                      : Container(
+                          color: Colors.white.withOpacity(0.1),
+                          child: Icon(Icons.image_outlined,
+                              color: Colors.white.withOpacity(0.3), size: 28),
+                        ),
+                ),
+              ),
             ),
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                article.author,
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.85),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w400,
-                  shadows: const [
-                    Shadow(
-                      color: Colors.black12,
-                      offset: Offset(0, 1),
-                      blurRadius: 2,
+            // 右侧内容 - 占三分之二宽度
+            Expanded(
+              flex: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // 标题
+                    Text(
+                      article.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black12,
+                            offset: Offset(0, 1),
+                            blurRadius: 2,
+                          ),
+                        ],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    // 作者
+                    Text(
+                      article.author,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.85),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                        shadows: const [
+                          Shadow(
+                            color: Colors.black12,
+                            offset: Offset(0, 1),
+                            blurRadius: 2,
+                          ),
+                        ],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    // 第一句话
+                    Text(
+                      previewText,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.92),
+                        fontSize: 12,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                previewText,
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.92),
-                  fontSize: 14,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

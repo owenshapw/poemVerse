@@ -45,6 +45,37 @@ def get_home_articles():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@articles_bp.route('/articles/grouped/by-author-count', methods=['GET'])
+def get_articles_by_author_count():
+    """获取按作者文章数量排序的文章列表"""
+    try:
+        limit = request.args.get('limit', 10, type=int)
+        articles = supabase_client.get_articles_by_author_count(limit=limit)
+        return jsonify({'articles': articles}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@articles_bp.route('/articles/grouped/by-author/<author>', methods=['GET'])
+def get_articles_by_author(author):
+    """获取指定作者的所有文章"""
+    try:
+        articles = supabase_client.get_articles_by_author(author)
+        return jsonify({'articles': articles}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@articles_bp.route('/articles/user/<user_id>', methods=['GET'])
+@token_required
+def get_user_articles(user_id, current_user_id):
+    """获取指定用户的文章列表"""
+    if user_id != current_user_id:
+        return jsonify({'error': '无权限访问'}), 403
+    try:
+        articles = supabase_client.get_articles_by_user(user_id)
+        return jsonify({'articles': articles}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @articles_bp.route('/articles', methods=['GET'])
 def get_articles():
     """获取文章列表（分页）"""
@@ -90,18 +121,6 @@ def create_article(current_user_id):
             print(f"图片处理失败: {str(e)}")
         
         return jsonify({'article': article}), 201
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@articles_bp.route('/articles/user/<user_id>', methods=['GET'])
-@token_required
-def get_user_articles(user_id, current_user_id):
-    """获取指定用户的文章列表"""
-    if user_id != current_user_id:
-        return jsonify({'error': '无权限访问'}), 403
-    try:
-        articles = supabase_client.get_articles_by_user(user_id)
-        return jsonify({'articles': articles}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

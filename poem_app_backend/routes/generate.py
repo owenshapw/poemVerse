@@ -4,6 +4,7 @@ from utils.ai_image_generator import ai_generator
 import jwt
 from functools import wraps
 import uuid
+from builtins import str, getattr, Exception, IndexError
 
 generate_bp = Blueprint('generate', __name__)
 

@@ -139,6 +139,57 @@ class SupabaseClient:
         result = self.supabase.table('articles').select('*').order('created_at', desc=True).limit(limit).execute()
         return result.data
 
+    def get_articles_by_author_count(self, limit=10):
+        """获取按作者文章数量排序的文章列表，每个作者返回最新的一篇文章"""
+        if self.supabase is None:
+            raise RuntimeError("Supabase client not initialized. Call init_app() first.")
+        
+        # 直接使用备用方法，因为Supabase可能没有exec_sql函数
+        return self._get_articles_by_author_count_fallback(limit)
+
+    def _get_articles_by_author_count_fallback(self, limit=10):
+        """备用方法：获取所有文章后按作者分组"""
+        if self.supabase is None:
+            raise RuntimeError("Supabase client not initialized. Call init_app() first.")
+        
+        # 获取所有文章
+        result = self.supabase.table('articles').select('*').order('created_at', desc=True).execute()
+        all_articles = result.data
+        
+        if not all_articles:
+            return []
+        
+        # 按作者分组并统计
+        author_groups = {}
+        for article in all_articles:
+            author = article.get('author', '匿名')
+            if author not in author_groups:
+                author_groups[author] = []
+            author_groups[author].append(article)
+        
+        # 按文章数量排序作者
+        sorted_authors = sorted(author_groups.keys(), 
+                              key=lambda x: len(author_groups[x]), 
+                              reverse=True)
+        
+        # 获取每个作者的最新文章
+        articles = []
+        for author in sorted_authors[:limit]:
+            author_articles = author_groups[author]
+            if author_articles:
+                # 按创建时间排序，取最新的
+                latest_article = max(author_articles, key=lambda x: x.get('created_at', ''))
+                articles.append(latest_article)
+        
+        return articles
+
+    def get_articles_by_author(self, author: str):
+        """获取指定作者的所有文章"""
+        if self.supabase is None:
+            raise RuntimeError("Supabase client not initialized. Call init_app() first.")
+        result = self.supabase.table('articles').select('*').eq('author', author).order('created_at', desc=True).execute()
+        return result.data
+
     def delete_comment(self, comment_id):
         if self.supabase is None:
             from flask import current_app

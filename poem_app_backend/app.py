@@ -8,10 +8,11 @@ from routes.generate import generate_bp
 from models.supabase_client import supabase_client
 from routes.upload import upload_bp
 from routes.cloudflare import cloudflare_bp
-import os
 
 from dotenv import load_dotenv
 load_dotenv()
+
+from builtins import print, Exception, RuntimeError
 
 def create_app():
     app = Flask(__name__)

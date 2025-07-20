@@ -65,6 +65,96 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> fetchArticlesByAuthorCount({int limit = 10}) async {
+    try {
+      final url = '${AppConfig.backendApiUrl}/articles/grouped/by-author-count?limit=$limit';
+      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'PoemVerse/1.0 (iOS)',
+          'Connection': 'keep-alive',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('Failed to load articles by author count: ${response.statusCode}');
+      }
+    } catch (e) {
+      // 尝试备用URL
+      try {
+        final backupUrl = '${AppConfig.backupBackendBaseUrl}/api/articles/grouped/by-author-count?limit=$limit';
+        
+        final backupResponse = await http.get(
+          Uri.parse(backupUrl),
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'User-Agent': 'PoemVerse/1.0 (iOS)',
+            'Connection': 'keep-alive',
+          },
+        );
+
+        if (backupResponse.statusCode == 200) {
+          return json.decode(backupResponse.body);
+        } else {
+          throw Exception('Both URLs failed: ${backupResponse.statusCode}');
+        }
+      } catch (backupError) {
+        throw Exception('Failed to load articles by author count: $e -> $backupError');
+      }
+    }
+  }
+
+  static Future<Map<String, dynamic>> fetchArticlesByAuthor(String author) async {
+    try {
+      final url = '${AppConfig.backendApiUrl}/articles/grouped/by-author/${Uri.encodeComponent(author)}';
+      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'PoemVerse/1.0 (iOS)',
+          'Connection': 'keep-alive',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('Failed to load articles by author: ${response.statusCode}');
+      }
+    } catch (e) {
+      // 尝试备用URL
+      try {
+        final backupUrl = '${AppConfig.backupBackendBaseUrl}/api/articles/grouped/by-author/${Uri.encodeComponent(author)}';
+        
+        final backupResponse = await http.get(
+          Uri.parse(backupUrl),
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'User-Agent': 'PoemVerse/1.0 (iOS)',
+            'Connection': 'keep-alive',
+          },
+        );
+
+        if (backupResponse.statusCode == 200) {
+          return json.decode(backupResponse.body);
+        } else {
+          throw Exception('Both URLs failed: ${backupResponse.statusCode}');
+        }
+      } catch (backupError) {
+        throw Exception('Failed to load articles by author: $e -> $backupError');
+      }
+    }
+  }
+
   static Future<List<Article>> fetchArticles({int page = 1, int perPage = 10}) async {
     final response = await http.get(
       Uri.parse('${AppConfig.backendApiUrl}/articles?page=$page&per_page=$perPage'),
