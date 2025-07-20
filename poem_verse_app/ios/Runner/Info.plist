@@ -64,9 +64,11 @@
 
   <!-- 照片读写权限 -->
   <key>NSPhotoLibraryUsageDescription</key>
-  <string>我们需要访问您的照片库，以便您选择或上传图片。</string>
+  <string>我们需要完全访问您的照片库来保存诗篇图片。</string>
   <key>NSPhotoLibraryAddUsageDescription</key>
-  <string>我们需要保存图片到您的相册。</string>
+  <string>我们需要保存诗篇图片到您的相册，以便您随时查看和分享。</string>
+  <key>PHPhotoLibraryPreventAutomaticLimitedAccessAlert</key>
+  <true/>
 
   <!-- 其余 Flutter 模板默认值 -->
   <key>UILaunchStoryboardName</key>

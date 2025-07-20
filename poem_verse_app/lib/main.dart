@@ -6,6 +6,8 @@ import 'package:poem_verse_app/providers/article_provider.dart';
 import 'package:poem_verse_app/screens/home_screen.dart';
 import 'package:poem_verse_app/screens/reset_password_screen.dart';
 import 'package:poem_verse_app/screens/login_screen.dart';
+import 'package:poem_verse_app/screens/author_works_screen.dart';
+import 'package:poem_verse_app/screens/author_magazine_screen.dart';
 
 void main() {
   runApp(const PoemVerseApp());
@@ -28,6 +30,20 @@ class PoemVerseApp extends StatelessWidget {
         home: const HomeScreen(),
         routes: {
           '/login': (context) => const LoginScreen(),
+          '/authorWorks': (context) {
+            final args = ModalRoute.of(context)!.settings.arguments as Map?;
+            return AuthorWorksScreen(
+              author: args?['author'] ?? '',
+              initialArticle: args?['initialArticle'],
+            );
+          },
+          '/authorMagazine': (context) {
+            final args = ModalRoute.of(context)!.settings.arguments as Map?;
+            return AuthorMagazineScreen(
+              author: args?['author'] ?? '',
+              initialArticle: args?['initialArticle'],
+            );
+          },
         },
         onGenerateRoute: (settings) {
           if (settings.name != null && settings.name!.startsWith('/reset-password')) {

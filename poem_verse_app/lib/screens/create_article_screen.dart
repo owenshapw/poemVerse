@@ -227,7 +227,7 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
         'file': await MultipartFile.fromFile(file.path, filename: file.path.split('/').last),
       });
       final response = await dio.post(
-        AppConfig.backendApiUrl + '/upload_image',
+        '${AppConfig.backendApiUrl}/upload_image',
         data: formData,
         options: Options(headers: {
           'Authorization': 'Bearer $token',
