@@ -1,4 +1,6 @@
 // lib/screens/create_article_screen.dart
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:poem_verse_app/providers/article_provider.dart';

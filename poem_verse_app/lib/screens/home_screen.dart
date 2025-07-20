@@ -6,7 +6,6 @@ import 'package:poem_verse_app/api/api_service.dart';
 import 'package:poem_verse_app/models/article.dart';
 import 'package:provider/provider.dart';
 import 'package:poem_verse_app/providers/article_provider.dart';
-import 'package:poem_verse_app/screens/article_detail_screen.dart';
 import 'dart:ui';
 import 'package:flutter/services.dart';
 import 'package:poem_verse_app/screens/login_screen.dart';
@@ -187,9 +186,9 @@ class _HomeScreenState extends State<HomeScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => ArticleDetailScreen(
-                articles: [article],
-                initialIndex: 0,
+              builder: (_) => AuthorWorksScreen(
+                author: article.author,
+                initialArticle: article,
               ),
             ),
           ).then((_) {
@@ -267,6 +266,22 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
+                      article.author,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        shadows: const [
+                          Shadow(
+                            color: Colors.black,
+                            offset: Offset(0, 1),
+                            blurRadius: 2,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
                       previewText,
                       style: const TextStyle(
                         color: Colors.white,
@@ -323,8 +338,8 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       },
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        height: 80,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        height: 120,
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.16),
           borderRadius: BorderRadius.circular(18),
@@ -342,52 +357,44 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: Row(
           children: [
-            // 左侧图片 - 占三分之一宽度
+            // 左侧图片 - 占三分之一宽度，保持原始比例，多余部分裁掉
             Expanded(
               flex: 1,
-              child: Container(
-                margin: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.13),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+              child: ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(18),
+                  bottomLeft: Radius.circular(18),
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: article.imageUrl.isNotEmpty
-                      ? SimpleNetworkImage(
-                          imageUrl:
-                              ApiService.getImageUrlWithVariant(article.imageUrl, 'list'),
-                          fit: BoxFit.cover,
-                          placeholder: Container(
-                            color: Colors.white.withOpacity(0.1),
-                            child: Icon(Icons.image_outlined,
-                                color: Colors.white.withOpacity(0.3), size: 28),
-                          ),
-                          errorWidget: Container(
-                            color: Colors.white.withOpacity(0.1),
-                            child: Icon(Icons.broken_image_outlined,
-                                color: Colors.white.withOpacity(0.3), size: 28),
-                          ),
-                        )
-                      : Container(
+                child: article.imageUrl.isNotEmpty
+                    ? SimpleNetworkImage(
+                        imageUrl:
+                            ApiService.getImageUrlWithVariant(article.imageUrl, 'list'),
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                        placeholder: Container(
                           color: Colors.white.withOpacity(0.1),
                           child: Icon(Icons.image_outlined,
                               color: Colors.white.withOpacity(0.3), size: 28),
                         ),
-                ),
+                        errorWidget: Container(
+                          color: Colors.white.withOpacity(0.1),
+                          child: Icon(Icons.broken_image_outlined,
+                              color: Colors.white.withOpacity(0.3), size: 28),
+                        ),
+                      )
+                    : Container(
+                        color: Colors.white.withOpacity(0.1),
+                        child: Icon(Icons.image_outlined,
+                            color: Colors.white.withOpacity(0.3), size: 28),
+                      ),
               ),
             ),
             // 右侧内容 - 占三分之二宽度
             Expanded(
               flex: 2,
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -410,13 +417,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     // 作者
                     Text(
                       article.author,
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.85),
-                        fontSize: 12,
+                        fontSize: 14,
                         fontWeight: FontWeight.w400,
                         shadows: const [
                           Shadow(
@@ -429,13 +436,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
-                    // 第一句话
+                    const SizedBox(height: 6),
+                    // 第一句话 - 只显示一行
                     Text(
                       previewText,
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.92),
-                        fontSize: 12,
+                        fontSize: 14,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

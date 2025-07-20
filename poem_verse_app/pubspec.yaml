@@ -40,6 +40,9 @@ dependencies:
   share_plus: ^11.0.0
   dio: ^5.5.0
   image_picker: ^1.0.7
+  image_gallery_saver: ^2.0.3
+  permission_handler: ^11.3.1
+  screenshot: ^3.0.0
   
 
 dev_dependencies:
