@@ -10,7 +10,6 @@ import 'dart:ui';
 import 'package:flutter/services.dart';
 import 'package:poem_verse_app/screens/login_screen.dart';
 import 'package:poem_verse_app/widgets/simple_network_image.dart';
-import 'package:poem_verse_app/screens/poem_magazine_screen.dart';
 import 'package:poem_verse_app/screens/author_works_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -141,20 +140,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 新增Logo入口
-                IconButton(
-                  icon: Icon(Icons.auto_awesome, color: Colors.white, size: 28),
-                  tooltip: '诗刊杂志',
-                  onPressed: () {
-                    if (mounted) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const PoemMagazineScreen()),
-                      );
-                    }
-                  },
-                ),
-                SizedBox(width: 8),
+                // 这里原本有 PoemMagazineScreen 的入口，已删除
                 IconButton(
                   icon: const Icon(Icons.person_outline, color: Colors.white, size: 28),
                   tooltip: '登录',
@@ -205,7 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       },
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
         height: 200,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
@@ -338,8 +324,8 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       },
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        height: 120,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+        height: 116,
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.16),
           borderRadius: BorderRadius.circular(18),
