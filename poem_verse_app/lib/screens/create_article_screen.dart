@@ -11,6 +11,8 @@ import 'package:poem_verse_app/widgets/network_image_with_dio.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:image/image.dart' as img;
+import 'package:flutter_exif_rotation/flutter_exif_rotation.dart';
 
 class CreateArticleScreen extends StatefulWidget {
   final Article? article;
@@ -212,7 +214,10 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
     if (pickedFile == null) return;
-    final file = File(pickedFile.path);
+
+    // Fix the image orientation.
+    final fixedImage = await FlutterExifRotation.rotateImage(path: pickedFile.path);
+
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final token = authProvider.token;
     if (token == null) {
@@ -224,7 +229,7 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
     try {
       final dio = Dio();
       final formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(file.path, filename: file.path.split('/').last),
+        'file': await MultipartFile.fromFile(fixedImage.path, filename: fixedImage.path.split('/').last),
       });
       final response = await dio.post(
         '${AppConfig.backendApiUrl}/upload_image',
