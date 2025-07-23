@@ -80,11 +80,11 @@ class ArticleProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> createArticle(String token, String title, String content, List<String> tags, String author, {String? previewImageUrl}) async {
+  Future<bool> createArticle(String token, String title, String content, List<String> tags, String author, {String? previewImageUrl, double? textPositionX, double? textPositionY}) async {
     _isLoading = true;
     notifyListeners();
 
-    final newArticle = await ApiService.createArticle(token, title, content, tags, author, previewImageUrl: previewImageUrl);
+    final newArticle = await ApiService.createArticle(token, title, content, tags, author, previewImageUrl: previewImageUrl, textPositionX: textPositionX, textPositionY: textPositionY);
 
     _isLoading = false;
     if (newArticle != null) {

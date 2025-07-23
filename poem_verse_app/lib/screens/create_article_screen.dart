@@ -1,5 +1,5 @@
 // lib/screens/create_article_screen.dart
-// ignore_for_file: use_build_context_synchronously
+// ignore_for_file: use_build_context_synchronously, prefer_const_constructors
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -11,8 +11,6 @@ import 'package:poem_verse_app/widgets/network_image_with_dio.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:image/image.dart' as img;
-import 'package:flutter_exif_rotation/flutter_exif_rotation.dart';
 
 class CreateArticleScreen extends StatefulWidget {
   final Article? article;
@@ -214,10 +212,7 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
     if (pickedFile == null) return;
-
-    // Fix the image orientation.
-    final fixedImage = await FlutterExifRotation.rotateImage(path: pickedFile.path);
-
+    final file = File(pickedFile.path);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final token = authProvider.token;
     if (token == null) {
@@ -229,7 +224,7 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
     try {
       final dio = Dio();
       final formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(fixedImage.path, filename: fixedImage.path.split('/').last),
+        'file': await MultipartFile.fromFile(file.path, filename: file.path.split('/').last),
       });
       final response = await dio.post(
         '${AppConfig.backendApiUrl}/upload_image',
@@ -282,6 +277,37 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
                 labelText: '标题',
                 border: OutlineInputBorder(),
               ),
+              contextMenuBuilder: (context, editableTextState) {
+                return AdaptiveTextSelectionToolbar.buttonItems(
+                  anchors: editableTextState.contextMenuAnchors,
+                  buttonItems: editableTextState.contextMenuButtonItems.map((item) {
+                    switch (item.label) {
+                      case 'Cut':
+                        return ContextMenuButtonItem(
+                          onPressed: item.onPressed,
+                          label: '剪切',
+                        );
+                      case 'Copy':
+                        return ContextMenuButtonItem(
+                          onPressed: item.onPressed,
+                          label: '复制',
+                        );
+                      case 'Paste':
+                        return ContextMenuButtonItem(
+                          onPressed: item.onPressed,
+                          label: '粘贴',
+                        );
+                      case 'Select all':
+                        return ContextMenuButtonItem(
+                          onPressed: item.onPressed,
+                          label: '全选',
+                        );
+                      default:
+                        return item;
+                    }
+                  }).toList(),
+                );
+              },
             ),
             SizedBox(height: 16),
             TextField(
@@ -292,6 +318,37 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
                 alignLabelWithHint: true,
               ),
               maxLines: 8,
+              contextMenuBuilder: (context, editableTextState) {
+                return AdaptiveTextSelectionToolbar.buttonItems(
+                  anchors: editableTextState.contextMenuAnchors,
+                  buttonItems: editableTextState.contextMenuButtonItems.map((item) {
+                    switch (item.label) {
+                      case 'Cut':
+                        return ContextMenuButtonItem(
+                          onPressed: item.onPressed,
+                          label: '剪切',
+                        );
+                      case 'Copy':
+                        return ContextMenuButtonItem(
+                          onPressed: item.onPressed,
+                          label: '复制',
+                        );
+                      case 'Paste':
+                        return ContextMenuButtonItem(
+                          onPressed: item.onPressed,
+                          label: '粘贴',
+                        );
+                      case 'Select all':
+                        return ContextMenuButtonItem(
+                          onPressed: item.onPressed,
+                          label: '全选',
+                        );
+                      default:
+                        return item;
+                    }
+                  }).toList(),
+                );
+              },
             ),
             SizedBox(height: 16),
             

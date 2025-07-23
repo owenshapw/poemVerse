@@ -256,7 +256,7 @@ class ApiService {
   }
 
   static Future<Article?> createArticle(
-      String token, String title, String content, List<String> tags, String author, {String? previewImageUrl}) async {
+      String token, String title, String content, List<String> tags, String author, {String? previewImageUrl, double? textPositionX, double? textPositionY}) async {
     final Map<String, dynamic> body = {
       'title': title,
       'content': content,
@@ -266,6 +266,12 @@ class ApiService {
     
     if (previewImageUrl != null) {
       body['preview_image_url'] = previewImageUrl;
+    }
+    if (textPositionX != null) {
+      body['text_position_x'] = textPositionX;
+    }
+    if (textPositionY != null) {
+      body['text_position_y'] = textPositionY;
     }
     
     final response = await http.post(

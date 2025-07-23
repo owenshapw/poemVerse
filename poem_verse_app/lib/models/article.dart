@@ -9,6 +9,8 @@ class Article {
   final String createdAt;
   final String userId;
   final int? likeCount;
+  final double? textPositionX;
+  final double? textPositionY;
 
   Article({
     required this.id,
@@ -20,6 +22,8 @@ class Article {
     required this.createdAt,
     required this.userId,
     this.likeCount,
+    this.textPositionX,
+    this.textPositionY,
   });
 
   factory Article.fromJson(Map<String, dynamic> json) {
@@ -33,6 +37,8 @@ class Article {
       createdAt: json['created_at'] ?? json['createdAt'] ?? '',
       userId: json['user_id'] ?? json['userId'] ?? '',
       likeCount: json['like_count'] ?? json['likeCount'],
+      textPositionX: (json['text_position_x'] as num?)?.toDouble(),
+      textPositionY: (json['text_position_y'] as num?)?.toDouble(),
     );
   }
 }
