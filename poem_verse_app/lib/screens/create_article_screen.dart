@@ -9,6 +9,7 @@ import 'package:poem_verse_app/config/app_config.dart';
 import 'package:poem_verse_app/models/article.dart';
 import 'package:poem_verse_app/widgets/network_image_with_dio.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:poem_verse_app/screens/article_preview_screen.dart';
 import 'dart:io';
 import 'package:dio/dio.dart';
 
@@ -29,6 +30,7 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
   String? _previewImageUrl;
   bool _isGeneratingPreview = false;
   bool _isCreating = false;
+  double _textPositionY = 200.0;
 
   @override
   void initState() {
@@ -168,12 +170,13 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
       final content = _contentController.text;
       final tags = List<String>.from(_tags);
       final previewImageUrl = _previewImageUrl;
+      final textPositionY = _textPositionY;
       
       
       if (widget.isEdit && widget.article != null) {
         // 编辑模式，调用更新接口
         await articleProvider.updateArticle(
-          token, widget.article!.id, title, content, tags, author, previewImageUrl: previewImageUrl,
+          token, widget.article!.id, title, content, tags, author, previewImageUrl: previewImageUrl, textPositionY: textPositionY,
         );
         
         // 刷新所有相关数据
@@ -181,7 +184,7 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
       } else {
         // 新建
         await articleProvider.createArticle(
-          token, title, content, tags, author, previewImageUrl: previewImageUrl,
+          token, title, content, tags, author, previewImageUrl: previewImageUrl, textPositionY: textPositionY,
         );
         
         // 刷新所有相关数据
@@ -440,6 +443,30 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
                     ),
                   ),
                 ],
+              ),
+              SizedBox(height: 8),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  final newPosition = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ArticlePreviewScreen(
+                        title: _titleController.text,
+                        content: _contentController.text,
+                        author: Provider.of<AuthProvider>(context, listen: false).username ?? '佚名',
+                        imageUrl: _previewImageUrl,
+                        initialTextPositionY: _textPositionY,
+                      ),
+                    ),
+                  );
+                  if (newPosition != null) {
+                    setState(() {
+                      _textPositionY = newPosition;
+                    });
+                  }
+                },
+                icon: Icon(Icons.drag_handle),
+                label: Text('预览和调整位置'),
               ),
               SizedBox(height: 16),
             ],

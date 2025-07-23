@@ -40,7 +40,7 @@ class SupabaseClient:
             return f"https://imagedelivery.net/{account_hash}/{image_id}/headphoto"
         return url
 
-    def create_article(self, user_id: str, title: str, content: str, tags: list, author: Optional[str] = None):
+    def create_article(self, user_id: str, title: str, content: str, tags: list, author: Optional[str] = None, text_position_y: Optional[float] = None):
         """创建文章"""
         if self.supabase is None:
             raise RuntimeError("Supabase client not initialized. Call init_app() first.")
@@ -57,7 +57,8 @@ class SupabaseClient:
             'tags': tags,
             'image_url': None,
             'created_at': datetime.utcnow().isoformat(),
-            'like_count': 0
+            'like_count': 0,
+            'text_position_y': text_position_y
         }
         try:
             article_data['author'] = author_name

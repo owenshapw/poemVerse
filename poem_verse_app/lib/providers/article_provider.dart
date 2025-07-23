@@ -80,11 +80,11 @@ class ArticleProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> createArticle(String token, String title, String content, List<String> tags, String author, {String? previewImageUrl, double? textPositionX, double? textPositionY}) async {
+  Future<bool> createArticle(String token, String title, String content, List<String> tags, String author, {String? previewImageUrl, double? textPositionY}) async {
     _isLoading = true;
     notifyListeners();
 
-    final newArticle = await ApiService.createArticle(token, title, content, tags, author, previewImageUrl: previewImageUrl, textPositionX: textPositionX, textPositionY: textPositionY);
+    final newArticle = await ApiService.createArticle(token, title, content, tags, author, previewImageUrl: previewImageUrl, textPositionY: textPositionY);
 
     _isLoading = false;
     if (newArticle != null) {
@@ -120,10 +120,10 @@ class ArticleProvider with ChangeNotifier {
     }
   }
 
-  Future<void> updateArticle(String token, String articleId, String title, String content, List<String> tags, String author, {String? previewImageUrl}) async {
+  Future<void> updateArticle(String token, String articleId, String title, String content, List<String> tags, String author, {String? previewImageUrl, double? textPositionY}) async {
     try {
       await deleteArticle(token, articleId);
-      await createArticle(token, title, content, tags, author, previewImageUrl: previewImageUrl);
+      await createArticle(token, title, content, tags, author, previewImageUrl: previewImageUrl, textPositionY: textPositionY);
     } catch (e) {
       throw Exception('编辑失败: $e');
     }

@@ -1,3 +1,5 @@
+// ignore_for_file: unnecessary_null_comparison, prefer_typing_uninitialized_variables
+
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -256,7 +258,7 @@ class ApiService {
   }
 
   static Future<Article?> createArticle(
-      String token, String title, String content, List<String> tags, String author, {String? previewImageUrl, double? textPositionX, double? textPositionY}) async {
+      String token, String title, String content, List<String> tags, String author, {String? previewImageUrl, double? textPositionY}) async {
     final Map<String, dynamic> body = {
       'title': title,
       'content': content,
@@ -267,6 +269,7 @@ class ApiService {
     if (previewImageUrl != null) {
       body['preview_image_url'] = previewImageUrl;
     }
+    var textPositionX;
     if (textPositionX != null) {
       body['text_position_x'] = textPositionX;
     }

@@ -98,11 +98,12 @@ def create_article(current_user_id):
         tags = data.get('tags', [])
         author = data.get('author', '')
         preview_image_url = data.get('preview_image_url')
+        text_position_y = data.get('text_position_y')
         
         if not title or not content:
             return jsonify({'error': '标题和内容不能为空'}), 400
         
-        article = supabase_client.create_article(current_user_id, title, content, tags, author)
+        article = supabase_client.create_article(current_user_id, title, content, tags, author, text_position_y=text_position_y)
         if not article:
             return jsonify({'error': '文章创建失败'}), 500
         
@@ -149,7 +150,8 @@ def update_article(article_id, current_user_id):
             'title': data.get('title'),
             'content': data.get('content'),
             'tags': data.get('tags'),
-            'author': data.get('author')
+            'author': data.get('author'),
+            'text_position_y': data.get('text_position_y')
         }
         updated_article = supabase_client.update_article_fields(article_id, update_data)
         return jsonify({'article': updated_article}), 200
