@@ -125,20 +125,27 @@ class ArticleProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final updatedArticle = await ApiService.updateArticle(
-        token, articleId, title, content, tags, author, 
+      // Step 1: Delete the old article.
+      final deleteResponse = await ApiService.deleteArticle(token, articleId);
+      if (deleteResponse.statusCode != 200) {
+        throw Exception('Failed to delete the old article to update.');
+      }
+
+      // Step 2: Create a new article with all the updated information.
+      final newArticle = await ApiService.createArticle(
+        token, title, content, tags, author, 
         previewImageUrl: previewImageUrl, 
         textPositionX: textPositionX, 
         textPositionY: textPositionY
       );
 
-      if (updatedArticle != null) {
-        // After a successful update, refresh the entire articles list 
-        // to ensure both position and order are correct.
-        await refreshAllData(token, userId);
-      } else {
-        throw Exception('更新文章失败');
+      if (newArticle == null) {
+        throw Exception('Failed to create the new article during update.');
       }
+
+      // Step 3: Refresh the entire list to show the new article at the top.
+      await refreshAllData(token, userId);
+
     } catch (e) {
       // Re-throw to allow the UI to catch it
       rethrow;

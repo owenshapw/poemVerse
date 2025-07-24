@@ -104,32 +104,28 @@ def create_article(current_user_id):
         if not title or not content:
             return jsonify({'error': '标题和内容不能为空'}), 400
 
-        # Step 1: Create the article with all available data, but without the image URL.
-        # This ensures the position data is saved correctly from the start.
+        # If no image is provided, generate one.
+        if not preview_image_url:
+            try:
+                temp_article_for_image = {
+                    'id': 'temp', 'title': title, 'content': content, 'author': author, 'tags': tags
+                }
+                preview_image_url = ai_generator.generate_poem_image(temp_article_for_image)
+            except Exception as e:
+                print(f"图片生成失败: {str(e)}")
+                preview_image_url = None
+
+        # Create the article in a single, atomic operation with all data.
         article = supabase_client.create_article(
             current_user_id, title, content, tags, author, 
             text_position_x=text_position_x, 
-            text_position_y=text_position_y
+            text_position_y=text_position_y, 
+            preview_image_url=preview_image_url
         )
-
+        
         if not article:
-            return jsonify({'error': '文章初步创建失败'}), 500
-
-        # Step 2: Handle the image URL. If a URL wasn't provided, generate one.
-        image_url_to_use = preview_image_url
-        if not image_url_to_use:
-            try:
-                image_url_to_use = ai_generator.generate_poem_image(article)
-            except Exception as e:
-                print(f"图片生成失败: {str(e)}")
-
-        # Step 3: If we have an image URL, update the article. 
-        # This function now correctly returns the FULL, updated article.
-        if image_url_to_use:
-            updated_article = supabase_client.update_article_image(article['id'], image_url_to_use)
-            if updated_article:
-                article = updated_article # Replace the original object with the final, complete one.
-
+            return jsonify({'error': '文章创建失败'}), 500
+        
         return jsonify({'article': article}), 201
 
     except Exception as e:
@@ -160,9 +156,15 @@ def update_article(article_id, current_user_id):
         
         # Build the update dictionary robustly, only including fields that are present
         update_data = {}
-        for key in ['title', 'content', 'tags', 'author', 'text_position_x', 'text_position_y']:
+        for key in ['title', 'content', 'tags', 'author']:
             if key in data:
                 update_data[key] = data[key]
+
+        # Explicitly cast positions to float to prevent data type errors
+        if 'text_position_x' in data and data['text_position_x'] is not None:
+            update_data['text_position_x'] = float(data['text_position_x'])
+        if 'text_position_y' in data and data['text_position_y'] is not None:
+            update_data['text_position_y'] = float(data['text_position_y'])
 
         # Handle the image URL separately to ensure it's formatted correctly
         if 'preview_image_url' in data:
