@@ -97,31 +97,41 @@ def create_article(current_user_id):
         content = data.get('content')
         tags = data.get('tags', [])
         author = data.get('author', '')
-        preview_image_url = data.get('preview_image_url')
+        text_position_x = data.get('text_position_x')
         text_position_y = data.get('text_position_y')
-        
+        preview_image_url = data.get('preview_image_url')
+
         if not title or not content:
             return jsonify({'error': '标题和内容不能为空'}), 400
-        
-        article = supabase_client.create_article(current_user_id, title, content, tags, author, text_position_y=text_position_y)
+
+        # Step 1: Create the article with all available data, but without the image URL.
+        # This ensures the position data is saved correctly from the start.
+        article = supabase_client.create_article(
+            current_user_id, title, content, tags, author, 
+            text_position_x=text_position_x, 
+            text_position_y=text_position_y
+        )
+
         if not article:
-            return jsonify({'error': '文章创建失败'}), 500
-        
-        try:
-            image_url = None
-            if preview_image_url:
-                image_url = preview_image_url
-            else:
-                image_url = ai_generator.generate_poem_image(article)
-            
-            if image_url:
-                updated_article = supabase_client.update_article_image(article['id'], image_url)
-                if updated_article:
-                    article = updated_article
-        except Exception as e:
-            print(f"图片处理失败: {str(e)}")
-        
+            return jsonify({'error': '文章初步创建失败'}), 500
+
+        # Step 2: Handle the image URL. If a URL wasn't provided, generate one.
+        image_url_to_use = preview_image_url
+        if not image_url_to_use:
+            try:
+                image_url_to_use = ai_generator.generate_poem_image(article)
+            except Exception as e:
+                print(f"图片生成失败: {str(e)}")
+
+        # Step 3: If we have an image URL, update the article. 
+        # This function now correctly returns the FULL, updated article.
+        if image_url_to_use:
+            updated_article = supabase_client.update_article_image(article['id'], image_url_to_use)
+            if updated_article:
+                article = updated_article # Replace the original object with the final, complete one.
+
         return jsonify({'article': article}), 201
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -151,8 +161,12 @@ def update_article(article_id, current_user_id):
             'content': data.get('content'),
             'tags': data.get('tags'),
             'author': data.get('author'),
+            'text_position_x': data.get('text_position_x'),
             'text_position_y': data.get('text_position_y')
         }
+        # Handle image URL update separately
+        if 'preview_image_url' in data:
+            update_data['image_url'] = data['preview_image_url']
         updated_article = supabase_client.update_article_fields(article_id, update_data)
         return jsonify({'article': updated_article}), 200
     except Exception as e:

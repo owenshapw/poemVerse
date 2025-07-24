@@ -80,11 +80,11 @@ class ArticleProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> createArticle(String token, String title, String content, List<String> tags, String author, {String? previewImageUrl, double? textPositionY}) async {
+  Future<bool> createArticle(String token, String title, String content, List<String> tags, String author, {String? previewImageUrl, double? textPositionX, double? textPositionY}) async {
     _isLoading = true;
     notifyListeners();
 
-    final newArticle = await ApiService.createArticle(token, title, content, tags, author, previewImageUrl: previewImageUrl, textPositionY: textPositionY);
+    final newArticle = await ApiService.createArticle(token, title, content, tags, author, previewImageUrl: previewImageUrl, textPositionX: textPositionX, textPositionY: textPositionY);
 
     _isLoading = false;
     if (newArticle != null) {
@@ -120,17 +120,37 @@ class ArticleProvider with ChangeNotifier {
     }
   }
 
-  Future<void> updateArticle(String token, String articleId, String title, String content, List<String> tags, String author, {String? previewImageUrl, double? textPositionY}) async {
+  Future<void> updateArticle(String token, String articleId, String title, String content, List<String> tags, String author, String userId, {String? previewImageUrl, double? textPositionX, double? textPositionY}) async {
+    _isLoading = true;
+    notifyListeners();
+
     try {
-      await deleteArticle(token, articleId);
-      await createArticle(token, title, content, tags, author, previewImageUrl: previewImageUrl, textPositionY: textPositionY);
+      final updatedArticle = await ApiService.updateArticle(
+        token, articleId, title, content, tags, author, 
+        previewImageUrl: previewImageUrl, 
+        textPositionX: textPositionX, 
+        textPositionY: textPositionY
+      );
+
+      if (updatedArticle != null) {
+        // After a successful update, refresh the entire articles list 
+        // to ensure both position and order are correct.
+        await refreshAllData(token, userId);
+      } else {
+        throw Exception('更新文章失败');
+      }
     } catch (e) {
-      throw Exception('编辑失败: $e');
+      // Re-throw to allow the UI to catch it
+      rethrow;
+    } finally {
+      _isLoading = false;
+      // The final notifyListeners is called within refreshAllData
     }
   }
 
-  Future<void> refreshAllData(String token) async {
-    await fetchArticles(token);
+  Future<void> refreshAllData(String token, String userId) async {
+    // This is the correct refresh logic. It fetches the articles for the current user.
+    await getMyArticles(token, userId);
   }
 
   Future<void> deleteArticle(String token, String articleId) async {
@@ -141,6 +161,33 @@ class ArticleProvider with ChangeNotifier {
     } else {
       final errorData = json.decode(response.body);
       throw Exception(errorData['error'] ?? '删除失败');
+    }
+  }
+
+  Future<void> getMyArticles(String token, String userId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final articlesData = await ApiService.getMyArticles(token, userId);
+      final articlesList = articlesData['articles'] as List?;
+      final newArticles = articlesList?.map((data) => Article.fromJson(data)).toList() ?? [];
+      
+      if (newArticles.isNotEmpty) {
+        _topArticle = newArticles.first;
+        _articles = newArticles.sublist(1);
+      } else {
+        _topArticle = null;
+        _articles = [];
+      }
+    } catch (e) {
+      _errorMessage = 'Failed to load your articles. Please try again.';
+      _articles = [];
+      _topArticle = null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 }

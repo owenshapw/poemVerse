@@ -30,6 +30,7 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
   String? _previewImageUrl;
   bool _isGeneratingPreview = false;
   bool _isCreating = false;
+  double _textPositionX = 15.0; // Default to a centered position
   double _textPositionY = 200.0;
 
   @override
@@ -41,6 +42,9 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
       _tags.clear();
       _tags.addAll(widget.article!.tags);
       _previewImageUrl = widget.article!.imageUrl;
+      // Load existing positions, otherwise the default is used
+      _textPositionX = widget.article!.textPositionX ?? 15.0;
+      _textPositionY = widget.article!.textPositionY ?? 200.0;
     }
   }
 
@@ -170,25 +174,26 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
       final content = _contentController.text;
       final tags = List<String>.from(_tags);
       final previewImageUrl = _previewImageUrl;
+      final textPositionX = _textPositionX;
       final textPositionY = _textPositionY;
       
       
       if (widget.isEdit && widget.article != null) {
-        // 编辑模式，调用更新接口
+        // Update existing article
         await articleProvider.updateArticle(
-          token, widget.article!.id, title, content, tags, author, previewImageUrl: previewImageUrl, textPositionY: textPositionY,
+          token, widget.article!.id, title, content, tags, author, authProvider.userId!, 
+          previewImageUrl: previewImageUrl, 
+          textPositionX: textPositionX, 
+          textPositionY: textPositionY
         );
-        
-        // 刷新所有相关数据
-        await articleProvider.refreshAllData(token);
       } else {
-        // 新建
+        // Create new article
         await articleProvider.createArticle(
-          token, title, content, tags, author, previewImageUrl: previewImageUrl, textPositionY: textPositionY,
+          token, title, content, tags, author, previewImageUrl: previewImageUrl, textPositionX: textPositionX, textPositionY: textPositionY,
         );
         
-        // 刷新所有相关数据
-        await articleProvider.refreshAllData(token);
+        // Refresh all data for the current user
+        await articleProvider.refreshAllData(token, authProvider.userId!);
       }
       
       if (!mounted) return;
@@ -455,13 +460,15 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
                         content: _contentController.text,
                         author: Provider.of<AuthProvider>(context, listen: false).username ?? '佚名',
                         imageUrl: _previewImageUrl,
+                        initialTextPositionX: _textPositionX,
                         initialTextPositionY: _textPositionY,
                       ),
                     ),
                   );
                   if (newPosition != null) {
                     setState(() {
-                      _textPositionY = newPosition;
+                      _textPositionX = newPosition['x'];
+                      _textPositionY = newPosition['y'];
                     });
                   }
                 },

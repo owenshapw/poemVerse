@@ -40,7 +40,7 @@ class SupabaseClient:
             return f"https://imagedelivery.net/{account_hash}/{image_id}/headphoto"
         return url
 
-    def create_article(self, user_id: str, title: str, content: str, tags: list, author: Optional[str] = None, text_position_y: Optional[float] = None):
+    def create_article(self, user_id: str, title: str, content: str, tags: list, author: Optional[str] = None, text_position_x: Optional[float] = None, text_position_y: Optional[float] = None, preview_image_url: Optional[str] = None):
         """创建文章"""
         if self.supabase is None:
             raise RuntimeError("Supabase client not initialized. Call init_app() first.")
@@ -55,9 +55,11 @@ class SupabaseClient:
             'title': title,
             'content': content,
             'tags': tags,
-            'image_url': None,
+            'image_url': self._format_image_url(preview_image_url),
             'created_at': datetime.utcnow().isoformat(),
+            'updated_at': datetime.utcnow().isoformat(),
             'like_count': 0,
+            'text_position_x': text_position_x,
             'text_position_y': text_position_y
         }
         try:
@@ -87,7 +89,7 @@ class SupabaseClient:
         """获取用户的所有文章"""
         if self.supabase is None:
             raise RuntimeError("Supabase client not initialized. Call init_app() first.")
-        result = self.supabase.table('articles').select('*').eq('user_id', user_id).order('created_at', desc=True).execute()
+        result = self.supabase.table('articles').select('*').eq('user_id', user_id).order('updated_at', desc=True).execute()
         return result.data
 
     def delete_article(self, article_id: str, user_id: str):
@@ -102,14 +104,15 @@ class SupabaseClient:
         if self.supabase is None:
             raise RuntimeError("Supabase client not initialized. Call init_app() first.")
         formatted_url = self._format_image_url(image_url)
-        result = self.supabase.table('articles').update({'image_url': formatted_url}).eq('id', article_id).execute()
+        result = self.supabase.table('articles').update({'image_url': formatted_url}).eq('id', article_id).select('*').execute()
         return result.data[0] if result.data else None
 
     def update_article_fields(self, article_id: str, update_data: dict):
         """根据ID更新文章部分字段"""
         if self.supabase is None:
             raise RuntimeError("Supabase client not initialized. Call init_app() first.")
-        result = self.supabase.table('articles').update(update_data).eq('id', article_id).execute()
+        update_data['updated_at'] = datetime.utcnow().isoformat()
+        result = self.supabase.table('articles').update(update_data).eq('id', article_id).select('*').execute()
         return result.data[0] if result.data else None
 
     def create_comment(self, article_id: str, user_id: str, content: str):

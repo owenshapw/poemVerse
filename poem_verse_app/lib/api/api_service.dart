@@ -1,5 +1,3 @@
-// ignore_for_file: unnecessary_null_comparison, prefer_typing_uninitialized_variables
-
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -194,6 +192,8 @@ class ApiService {
   static final Map<String, String> headers = {
     'Content-Type': 'application/json; charset=UTF-8',
   };
+  
+  static get textPositionX => null;
 
   static Future<Map<String, dynamic>> login(String email, String password) async {
     final url = Uri.parse('${AppConfig.backendApiUrl}/auth/login');
@@ -258,7 +258,7 @@ class ApiService {
   }
 
   static Future<Article?> createArticle(
-      String token, String title, String content, List<String> tags, String author, {String? previewImageUrl, double? textPositionY}) async {
+      String token, String title, String content, List<String> tags, String author, {String? previewImageUrl, double? textPositionY, double? textPositionX}) async {
     final Map<String, dynamic> body = {
       'title': title,
       'content': content,
@@ -269,7 +269,6 @@ class ApiService {
     if (previewImageUrl != null) {
       body['preview_image_url'] = previewImageUrl;
     }
-    var textPositionX;
     if (textPositionX != null) {
       body['text_position_x'] = textPositionX;
     }
@@ -378,4 +377,6 @@ class ApiService {
       throw Exception('获取详情失败: ${response.statusCode}');
     }
   }
+
+  static Future updateArticle(String token, String articleId, String title, String content, List<String> tags, String author, {String? previewImageUrl, double? textPositionX, double? textPositionY}) async {}
 }
