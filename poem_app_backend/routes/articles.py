@@ -172,7 +172,7 @@ def update_article(article_id, current_user_id):
         if not update_data:
             return jsonify({'message': 'No data provided to update'}), 200
 
-        updated_article = supabase_client.update_article_fields(article_id, update_data)
+        updated_article = supabase_client.update_article_fields(article_id, current_user_id, update_data)
         
         if not updated_article:
             return jsonify({'error': '文章更新失败'}), 500

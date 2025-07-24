@@ -107,12 +107,12 @@ class SupabaseClient:
         result = self.supabase.table('articles').update({'image_url': formatted_url}).eq('id', article_id).select('*').execute()
         return result.data[0] if result.data else None
 
-    def update_article_fields(self, article_id: str, update_data: dict):
-        """根据ID更新文章部分字段"""
+    def update_article_fields(self, article_id: str, user_id: str, update_data: dict):
+        """根据ID更新文章部分字段，并验证用户所有权"""
         if self.supabase is None:
             raise RuntimeError("Supabase client not initialized. Call init_app() first.")
         update_data['updated_at'] = datetime.utcnow().isoformat()
-        result = self.supabase.table('articles').update(update_data).eq('id', article_id).select('*').execute()
+        result = self.supabase.table('articles').update(update_data).eq('id', article_id).eq('user_id', user_id).select('*').execute()
         return result.data[0] if result.data else None
 
     def create_comment(self, article_id: str, user_id: str, content: str):
