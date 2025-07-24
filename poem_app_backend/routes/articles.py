@@ -151,24 +151,34 @@ def get_article(article_id):
 def update_article(article_id, current_user_id):
     """更新文章"""
     try:
+        # First, verify the user has permission to edit this article
         article = supabase_client.get_article_by_id(article_id)
         if not article or article['user_id'] != current_user_id:
             return jsonify({'error': '无权限修改此文章'}), 403
         
         data = request.get_json()
-        update_data = {
-            'title': data.get('title'),
-            'content': data.get('content'),
-            'tags': data.get('tags'),
-            'author': data.get('author'),
-            'text_position_x': data.get('text_position_x'),
-            'text_position_y': data.get('text_position_y')
-        }
-        # Handle image URL update separately
+        
+        # Build the update dictionary robustly, only including fields that are present
+        update_data = {}
+        for key in ['title', 'content', 'tags', 'author', 'text_position_x', 'text_position_y']:
+            if key in data:
+                update_data[key] = data[key]
+
+        # Handle the image URL separately to ensure it's formatted correctly
         if 'preview_image_url' in data:
-            update_data['image_url'] = data['preview_image_url']
+            update_data['image_url'] = supabase_client._format_image_url(data['preview_image_url'])
+
+        # Perform the update only if there is data to update
+        if not update_data:
+            return jsonify({'message': 'No data provided to update'}), 200
+
         updated_article = supabase_client.update_article_fields(article_id, update_data)
+        
+        if not updated_article:
+            return jsonify({'error': '文章更新失败'}), 500
+
         return jsonify({'article': updated_article}), 200
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
