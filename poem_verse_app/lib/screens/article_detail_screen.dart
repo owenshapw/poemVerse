@@ -253,7 +253,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                     icon: const Icon(Icons.auto_awesome, color: Colors.deepPurple, size: 28),
                     tooltip: '切换风格',
                     onPressed: () {
-                      Navigator.pushReplacement(
+                      Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => AuthorWorksScreen(
