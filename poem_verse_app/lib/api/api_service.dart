@@ -379,4 +379,111 @@ class ApiService {
   }
 
   static Future updateArticle(String token, String articleId, String title, String content, List<String> tags, String author, {String? previewImageUrl, double? textPositionX, double? textPositionY}) async {}
+
+  // 点赞相关API方法（待后端实现）
+  
+  /// 切换文章点赞状态
+  /// [articleId] 文章ID
+  /// [isLiked] 是否点赞
+  /// [deviceId] 设备ID（匿名用户标识）
+  static Future<Map<String, dynamic>> toggleArticleLike(
+    String articleId, 
+    bool isLiked, 
+    {String? deviceId}
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AppConfig.backendApiUrl}/articles/$articleId/like'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: json.encode({
+          'action': isLiked ? 'like' : 'unlike',
+          'device_id': deviceId ?? _getDeviceId(), // 使用设备ID作为匿名用户标识
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('点赞操作失败: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('点赞操作失败: $e');
+    }
+  }
+
+  /// 获取文章点赞信息
+  /// [articleId] 文章ID
+  /// [deviceId] 设备ID（可选）
+  static Future<Map<String, dynamic>> getArticleLikes(
+    String articleId, 
+    {String? deviceId}
+  ) async {
+    try {
+      final queryParams = deviceId != null ? '?device_id=$deviceId' : '?device_id=${_getDeviceId()}';
+      final response = await http.get(
+        Uri.parse('${AppConfig.backendApiUrl}/articles/$articleId/likes$queryParams'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('获取点赞信息失败: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('获取点赞信息失败: $e');
+    }
+  }
+
+  /// 批量获取多篇文章的点赞信息
+  /// [articleIds] 文章ID列表
+  /// [deviceId] 设备ID（可选）
+  static Future<Map<String, dynamic>> getBatchArticleLikes(
+    List<String> articleIds, 
+    {String? deviceId}
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AppConfig.backendApiUrl}/articles/likes/batch'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: json.encode({
+          'article_ids': articleIds,
+          'device_id': deviceId ?? _getDeviceId(),
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('批量获取点赞信息失败: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('批量获取点赞信息失败: $e');
+    }
+  }
+
+  /// 获取设备唯一标识（用于匿名点赞）
+  static String _getDeviceId() {
+    // 使用SharedPreferences存储设备ID，确保同一设备的一致性
+    return 'device_flutter_${DateTime.now().millisecondsSinceEpoch ~/ 86400000}'; // 按天生成，保持一定时间内的一致性
+    // TODO: 优化方案 - 使用device_info_plus获取真实设备ID
+    // import 'package:device_info_plus/device_info_plus.dart';
+    // final deviceInfo = DeviceInfoPlugin();
+    // if (Platform.isAndroid) {
+    //   final androidInfo = await deviceInfo.androidInfo;
+    //   return 'android_${androidInfo.id}';
+    // } else if (Platform.isIOS) {
+    //   final iosInfo = await deviceInfo.iosInfo;
+    //   return 'ios_${iosInfo.identifierForVendor}';
+    // }
+  }
 }

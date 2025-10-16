@@ -108,41 +108,7 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
     }
   }
 
-  void _regeneratePreview() async {
-    if (_titleController.text.isEmpty || _contentController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('请先填写标题和内容')),
-      );
-      return;
-    }
-    setState(() {
-      _isGeneratingPreview = true;
-    });
-    final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final token = authProvider.token!;
-    final title = _titleController.text;
-    final content = _contentController.text;
-    final tags = List<String>.from(_tags);
-    final author = authProvider.username ?? '佚名';
-    final previewUrl = await articleProvider.generatePreview(
-      token, title, content, tags, author,
-    );
-    if (!mounted) return;
-    setState(() {
-      _previewImageUrl = previewUrl;
-      _isGeneratingPreview = false;
-    });
-    if (previewUrl != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('预览图片重新生成成功！')),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('预览图片重新生成失���')),
-      );
-    }
-  }
+  
 
   String _buildImageUrl(String imageUrl) {
     return AppConfig.buildImageUrl(imageUrl);
@@ -415,18 +381,36 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
                 ),
               ),
               SizedBox(height: 8),
-              // 重新生成按钮
+              // 预览调整和重新上传按钮
               Row(
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: _isGeneratingPreview ? null : _regeneratePreview,
-                      icon: _isGeneratingPreview 
-                        ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                        : Icon(Icons.refresh),
-                      label: Text(_isGeneratingPreview ? '重新生成中...' : '重新生成'),
+                      onPressed: () async {
+                        final newPosition = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ArticlePreviewScreen(
+                              title: _titleController.text,
+                              content: _contentController.text,
+                              author: Provider.of<AuthProvider>(context, listen: false).username ?? '佚名',
+                              imageUrl: _previewImageUrl,
+                              initialTextPositionX: _textPositionX,
+                              initialTextPositionY: _textPositionY,
+                            ),
+                          ),
+                        );
+                        if (newPosition != null) {
+                          setState(() {
+                            _textPositionX = newPosition['x'];
+                            _textPositionY = newPosition['y'];
+                          });
+                        }
+                      },
+                      icon: Icon(Icons.tune),
+                      label: Text('预览调整'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
+                        backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
                       ),
                     ),
@@ -434,72 +418,29 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
                   SizedBox(width: 8),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _previewImageUrl = null;
-                        });
-                      },
-                      icon: Icon(Icons.delete),
-                      label: Text('删除预览'),
+                      onPressed: _pickAndUploadImage,
+                      icon: Icon(Icons.refresh),
+                      label: Text('重新上传'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
+                        backgroundColor: Colors.orange,
                         foregroundColor: Colors.white,
                       ),
                     ),
                   ),
                 ],
               ),
-              SizedBox(height: 8),
-              ElevatedButton.icon(
-                onPressed: () async {
-                  final newPosition = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ArticlePreviewScreen(
-                        title: _titleController.text,
-                        content: _contentController.text,
-                        author: Provider.of<AuthProvider>(context, listen: false).username ?? '佚名',
-                        imageUrl: _previewImageUrl,
-                        initialTextPositionX: _textPositionX,
-                        initialTextPositionY: _textPositionY,
-                      ),
-                    ),
-                  );
-                  if (newPosition != null) {
-                    setState(() {
-                      _textPositionX = newPosition['x'];
-                      _textPositionY = newPosition['y'];
-                    });
-                  }
-                },
-                icon: Icon(Icons.drag_handle),
-                label: Text('预览和调整位置'),
-              ),
               SizedBox(height: 16),
             ],
             
-            // 生成预览/AI配图和上传图片按钮
+            // 上传配图按钮
             if (_previewImageUrl == null)
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _isGeneratingPreview ? null : _generatePreview,
-                      icon: _isGeneratingPreview 
-                        ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                        : Icon(Icons.auto_awesome),
-                      label: Text(_isGeneratingPreview ? 'AI配图中...' : 'AI配图'),
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _pickAndUploadImage,
-                      icon: Icon(Icons.upload_file),
-                      label: Text('上传图片'),
-                    ),
-                  ),
-                ],
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _pickAndUploadImage,
+                  icon: Icon(Icons.upload_file),
+                  label: Text('上传配图'),
+                ),
               ),
             
             SizedBox(height: 16),

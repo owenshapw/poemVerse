@@ -45,6 +45,7 @@ dependencies:
   image_gallery_saver: ^2.0.3
   permission_handler: ^11.4.0
   screenshot: ^3.0.0
+  shared_preferences: ^2.3.2
   
 
 dev_dependencies:

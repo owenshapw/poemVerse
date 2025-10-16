@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:poem_verse_app/models/article.dart';
 import 'package:poem_verse_app/providers/auth_provider.dart';
 import 'package:poem_verse_app/providers/article_provider.dart';
-import 'package:share_plus/share_plus.dart';
+
 import 'package:poem_verse_app/api/api_service.dart';
 import 'package:poem_verse_app/screens/create_article_screen.dart';
 import 'package:poem_verse_app/widgets/network_image_with_dio.dart';
@@ -149,22 +149,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     );
   }
 
-  void _shareArticle() {
-    final shareText = '''
-${_article.title}
-
-作者：${_article.author}
-发布时间：${_formatDate(_article.createdAt)}
-
-${_article.content}
-
-${_article.tags.isNotEmpty ? '标签：${_article.tags.join('、')}' : ''}
-
-来自诗篇App
-''';
-    
-    SharePlus.instance.share(ShareParams(text: shareText));
-  }
+  
 
   Future<void> _editArticle() async {
     final updated = await Navigator.push(
@@ -201,9 +186,18 @@ ${_article.tags.isNotEmpty ? '标签：${_article.tags.join('、')}' : ''}
             ),
           ],
           IconButton(
-            icon: const Icon(Icons.share_outlined),
-            tooltip: '分享',
-            onPressed: _shareArticle,
+            icon: const Icon(Icons.auto_awesome, color: Colors.deepPurple, size: 28),
+            tooltip: '卡片展示',
+            onPressed: () {
+              Navigator.pushNamed(
+                context,
+                '/authorMagazine',
+                arguments: {
+                  'author': _article.author,
+                  'initialArticle': _article,
+                },
+              );
+            },
           ),
         ],
       ),
@@ -217,10 +211,24 @@ ${_article.tags.isNotEmpty ? '标签：${_article.tags.join('、')}' : ''}
         },
         itemBuilder: (context, index) {
           final article = widget.articles[index];
-          return SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+          return Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.white,
+                  const Color(0xFFFDFCFF),
+                  const Color(0xFFF8F6FF),
+                  const Color(0xFFF5F3FF),
+                ],
+                stops: const [0.0, 0.5, 0.8, 1.0],
+              ),
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                 if (article.imageUrl.isNotEmpty)
                   SizedBox(
                     width: double.infinity,
@@ -311,11 +319,38 @@ ${_article.tags.isNotEmpty ? '标签：${_article.tags.join('、')}' : ''}
                       const SizedBox(height: 16),
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(20),
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF8F6FF),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.purple.withOpacity(0.1)),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              const Color(0xFFFBFAFF),
+                              const Color(0xFFF8F6FF),
+                              const Color(0xFFF6F4FF),
+                            ],
+                            stops: const [0.0, 0.5, 1.0],
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFF0EDFF).withOpacity(0.8),
+                              spreadRadius: 0,
+                              blurRadius: 40,
+                              offset: const Offset(0, 10),
+                            ),
+                            BoxShadow(
+                              color: Colors.purple.withOpacity(0.02),
+                              spreadRadius: 0,
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.6),
+                            width: 1.5,
+                          ),
                         ),
                         child: Text(
                           article.content,
@@ -328,40 +363,13 @@ ${_article.tags.isNotEmpty ? '标签：${_article.tags.join('、')}' : ''}
                         ),
                       ),
                       const SizedBox(height: 32),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('点赞功能开发中...')),
-                                );
-                              },
-                              icon: const Icon(Icons.favorite_border),
-                              label: const Text('点赞'),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('收藏功能开发中...')),
-                                );
-                              },
-                              icon: const Icon(Icons.bookmark_border),
-                              label: const Text('收藏'),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 32),
                     ],
                   ),
                 ),
               ],
             ),
-          );
+          ),
+        );
         },
       ),
     );
