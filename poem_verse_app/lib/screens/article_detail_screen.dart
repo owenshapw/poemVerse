@@ -175,9 +175,11 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     try {
       final imageBytes = await _screenshotController.capture();
       if (imageBytes == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('截图失败')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('截图失败')),
+          );
+        }
         return;
       }
       final result = await ImageGallerySaver.saveImage(
@@ -246,12 +248,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                       onPressed: _isDeleting ? null : _deleteArticle,
                     ),
                   ],
-                  
-                  Text(
-                    '第 ${_currentPage + 1} / ${widget.articles.length} 篇',
-                    style: const TextStyle(fontSize: 15, color: Colors.grey),
-                  ),
-                  const SizedBox(width: 12),
                   
                   IconButton(
                     icon: const Icon(Icons.auto_awesome, color: Colors.deepPurple, size: 28),
