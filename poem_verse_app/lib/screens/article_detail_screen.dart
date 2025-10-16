@@ -6,10 +6,11 @@ import 'package:provider/provider.dart';
 import 'package:poem_verse_app/models/article.dart';
 import 'package:poem_verse_app/providers/auth_provider.dart';
 import 'package:poem_verse_app/providers/article_provider.dart';
-
 import 'package:poem_verse_app/api/api_service.dart';
 import 'package:poem_verse_app/screens/create_article_screen.dart';
-import 'package:poem_verse_app/widgets/network_image_with_dio.dart';
+import 'package:poem_verse_app/screens/author_works_screen.dart';
+import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:screenshot/screenshot.dart';
 
 class ArticleDetailScreen extends StatefulWidget {
   final List<Article> articles;
@@ -25,12 +26,15 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   late PageController _pageController;
   late Article _article;
   bool _isDeleting = false;
+  int _currentPage = 0;
+  final ScreenshotController _screenshotController = ScreenshotController();
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: widget.initialIndex);
+    _pageController = PageController(initialPage: widget.initialIndex, viewportFraction: 0.95);
     _article = widget.articles[widget.initialIndex];
+    _currentPage = widget.initialIndex;
   }
 
   @override
@@ -167,220 +171,253 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     }
   }
 
+  Future<void> _saveImageToGallery() async {
+    try {
+      final imageBytes = await _screenshotController.capture();
+      if (imageBytes == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('截图失败')),
+        );
+        return;
+      }
+      final result = await ImageGallerySaver.saveImage(
+        imageBytes,
+        quality: 100,
+        name: "${_article.author}_${DateTime.now().millisecondsSinceEpoch}",
+      );
+      if (result['isSuccess'] == true) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('图片已保存到相册'), backgroundColor: Colors.green),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('保存失败，请检查权限'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('保存失败: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('诗篇详情'),
-        actions: [
-          if (_isAuthor(context)) ...[
-            IconButton(
-              icon: const Icon(Icons.edit_outlined),
-              tooltip: '编辑',
-              onPressed: _isDeleting ? null : _editArticle,
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.black87),
-              tooltip: '删除',
-              onPressed: _isDeleting ? null : _deleteArticle,
-            ),
-          ],
-          IconButton(
-            icon: const Icon(Icons.auto_awesome, color: Colors.deepPurple, size: 28),
-            tooltip: '卡片展示',
-            onPressed: () {
-              Navigator.pushNamed(
-                context,
-                '/authorMagazine',
-                arguments: {
-                  'author': _article.author,
-                  'initialArticle': _article,
-                },
-              );
-            },
-          ),
-        ],
-      ),
-      body: PageView.builder(
-        controller: _pageController,
-        itemCount: widget.articles.length,
-        onPageChanged: (index) {
-          setState(() {
-            _article = widget.articles[index];
-          });
-        },
-        itemBuilder: (context, index) {
-          final article = widget.articles[index];
-          return Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.white,
-                  const Color(0xFFFDFCFF),
-                  const Color(0xFFF8F6FF),
-                  const Color(0xFFF5F3FF),
-                ],
-                stops: const [0.0, 0.5, 0.8, 1.0],
-              ),
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      backgroundColor: const Color(0xFFF8F6FF),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // 顶部栏 - 采用author_magazine_screen样式，但保留编辑删除按钮
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
                 children: [
-                if (article.imageUrl.isNotEmpty)
-                  SizedBox(
-                    width: double.infinity,
-                    height: 260,
-                    child: NetworkImageWithDio(
-                      imageUrl: ApiService.buildImageUrl(article.imageUrl),
-                      fit: BoxFit.cover,
-                      placeholder: Container(
-                        color: Colors.grey[200],
-                        child: const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              CircularProgressIndicator(),
-                              SizedBox(height: 16),
-                              Text('加载中...'),
-                            ],
-                          ),
-                        ),
-                      ),
-                      errorWidget: Container(
-                        color: Colors.grey[200],
-                        child: const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.image_not_supported, size: 64, color: Colors.grey),
-                              Text('图片加载失败'),
-                            ],
-                          ),
-                        ),
-                      ),
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.black87, size: 28),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                  Text(
+                    _article.author,
+                    style: const TextStyle(
+                      color: Colors.black87,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        article.title,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          const Icon(Icons.person, color: Colors.grey),
-                          const SizedBox(width: 8),
-                          Text(
-                            '作者：${article.author}',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Icon(Icons.access_time, color: Colors.grey, size: 16),
-                          const SizedBox(width: 8),
-                          Text(
-                            '发布时间：${_formatDate(article.createdAt)}',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[500],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      if (article.tags.isNotEmpty) ...[
-                        Wrap(
-                          spacing: 8,
-                          children: article.tags.map((tag) => Chip(
-                            label: Text(tag),
-                            backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
-                            labelStyle: TextStyle(color: Theme.of(context).primaryColor),
-                          )).toList(),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                      const Divider(),
-                      const SizedBox(height: 16),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(20),
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              const Color(0xFFFBFAFF),
-                              const Color(0xFFF8F6FF),
-                              const Color(0xFFF6F4FF),
-                            ],
-                            stops: const [0.0, 0.5, 1.0],
-                          ),
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFFF0EDFF).withOpacity(0.8),
-                              spreadRadius: 0,
-                              blurRadius: 40,
-                              offset: const Offset(0, 10),
-                            ),
-                            BoxShadow(
-                              color: Colors.purple.withOpacity(0.02),
-                              spreadRadius: 0,
-                              blurRadius: 16,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.6),
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Text(
-                          article.content,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            height: 1.8,
-                            letterSpacing: 0.5,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                    ],
+                  const Spacer(),
+                  
+                  // 作者权限按钮
+                  if (_isAuthor(context)) ...[
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, color: Colors.black87),
+                      tooltip: '编辑',
+                      onPressed: _isDeleting ? null : _editArticle,
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.black87),
+                      tooltip: '删除',
+                      onPressed: _isDeleting ? null : _deleteArticle,
+                    ),
+                  ],
+                  
+                  Text(
+                    '第 ${_currentPage + 1} / ${widget.articles.length} 篇',
+                    style: const TextStyle(fontSize: 15, color: Colors.grey),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 12),
+                  
+                  IconButton(
+                    icon: const Icon(Icons.auto_awesome, color: Colors.deepPurple, size: 28),
+                    tooltip: '切换风格',
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AuthorWorksScreen(
+                            author: _article.author,
+                            initialArticle: _article,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.download, color: Colors.deepPurple, size: 26),
+                    tooltip: '保存为图片',
+                    onPressed: _saveImageToGallery,
+                  ),
+                ],
+              ),
             ),
-          ),
-        );
-        },
+            
+            // 内容区 - 采用author_magazine_screen样式
+            Expanded(
+              child: Center(
+                child: PageView.builder(
+                  controller: _pageController,
+                  itemCount: widget.articles.length,
+                  physics: const BouncingScrollPhysics(),
+                  onPageChanged: (index) {
+                    setState(() {
+                      _currentPage = index;
+                      _article = widget.articles[index];
+                    });
+                  },
+                  itemBuilder: (context, index) {
+                    final article = widget.articles[index];
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        return AnimatedBuilder(
+                          animation: _pageController,
+                          builder: (context, child) {
+                            double scale = 1.0;
+                            double opacity = 1.0;
+                            
+                            if (_pageController.position.haveDimensions) {
+                              double page = _pageController.page ?? index.toDouble();
+                              double distance = (page - index).abs();
+                              
+                              // 缩放计算：当前页面为1.0，相邻页面为0.8，更远的为0.7
+                              if (distance <= 1.0) {
+                                scale = 1.0 - (distance * 0.2); // 范围 0.8-1.0
+                              } else {
+                                scale = 0.7; // 更远的页面
+                              }
+                              
+                              // 透明度计算
+                              opacity = (1.0 - distance.clamp(0.0, 1.0) * 0.3).clamp(0.7, 1.0);
+                            }
+                            
+                            final cardWidget = Center(
+                              child: Transform.scale(
+                                scale: scale,
+                                child: Container(
+                                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(20),
+                                    color: Colors.white.withOpacity(opacity),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.15 * scale * opacity),
+                                        blurRadius: 20 * scale,
+                                        spreadRadius: 3 * scale,
+                                        offset: Offset(0, 10 * scale),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(20),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        AspectRatio(
+                                          aspectRatio: 4 / 2.8,
+                                          child: article.imageUrl.isNotEmpty
+                                              ? ColorFiltered(
+                                                  colorFilter: ColorFilter.mode(
+                                                    Colors.white.withOpacity(1.0 - opacity),
+                                                    BlendMode.srcATop,
+                                                  ),
+                                                  child: Image.network(
+                                                    ApiService.buildImageUrl(article.imageUrl),
+                                                    fit: BoxFit.cover,
+                                                    width: double.infinity,
+                                                  ),
+                                                )
+                                              : Container(color: Colors.grey[200]!.withOpacity(opacity)),
+                                        ),
+                                        Flexible(
+                                          child: SingleChildScrollView(
+                                            child: Padding(
+                                              padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    article.title,
+                                                    style: TextStyle(
+                                                      fontSize: 24,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Colors.black.withOpacity(opacity),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 10),
+                                                  Text(
+                                                    article.author,
+                                                    style: TextStyle(
+                                                      fontSize: 15,
+                                                      color: Colors.black54.withOpacity(opacity),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 18),
+                                                  Text(
+                                                    article.content,
+                                                    style: TextStyle(
+                                                      fontSize: 16,
+                                                      color: Colors.black87.withOpacity(opacity),
+                                                      height: 1.6,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                            
+                            // 只对当前页面应用Screenshot包装
+                            if (index == _currentPage) {
+                              return Screenshot(
+                                controller: _screenshotController,
+                                child: cardWidget,
+                              );
+                            } else {
+                              return cardWidget;
+                            }
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  String _formatDate(String dateString) {
-    try {
-      final date = DateTime.parse(dateString);
-      return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-    } catch (e) {
-      return dateString;
-    }
   }
-}
