@@ -472,19 +472,11 @@ class ApiService {
   }
 
   /// 获取设备唯一标识（用于匿名点赞）
+  /// 
+  /// 当前实现基于日期生成，同一天内保持一致。
+  /// 如需更稳定的设备标识，可考虑使用 device_info_plus 包获取真实设备ID。
   static String _getDeviceId() {
-    // 生成一个相对稳定的设备ID（基于日期，同一天内保持一致）
     final daysSinceEpoch = DateTime.now().millisecondsSinceEpoch ~/ 86400000;
     return 'flutter_device_$daysSinceEpoch';
-    // TODO: 优化方案 - 使用device_info_plus获取真实设备ID
-    // import 'package:device_info_plus/device_info_plus.dart';
-    // final deviceInfo = DeviceInfoPlugin();
-    // if (Platform.isAndroid) {
-    //   final androidInfo = await deviceInfo.androidInfo;
-    //   return 'android_${androidInfo.id}';
-    // } else if (Platform.isIOS) {
-    //   final iosInfo = await deviceInfo.iosInfo;
-    //   return 'ios_${iosInfo.identifierForVendor}';
-    // }
   }
 }
