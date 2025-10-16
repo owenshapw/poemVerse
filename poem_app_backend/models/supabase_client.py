@@ -237,4 +237,178 @@ class SupabaseClient:
         self.supabase.table('users').insert(user_data).execute()
         return user_data
 
+    # ==================== 点赞功能相关方法 ====================
+    
+    def toggle_article_like(self, article_id: str, user_id: Optional[str] = None, device_id: Optional[str] = None, ip_address: Optional[str] = None):
+        """
+        切换文章点赞状态
+        
+        Args:
+            article_id: 文章ID
+            user_id: 用户ID（登录用户）
+            device_id: 设备ID（匿名用户）
+            ip_address: IP地址
+            
+        Returns:
+            dict: 包含点赞状态和总计数的字典
+        """
+        if self.supabase is None:
+            raise RuntimeError("Supabase client not initialized. Call init_app() first.")
+        
+        # 检查文章是否存在
+        article = self.get_article_by_id(article_id)
+        if not article:
+            raise ValueError("文章不存在")
+        
+        try:
+            # 查找现有的点赞记录
+            query = self.supabase.table('article_likes').select('*').eq('article_id', article_id)
+            
+            if user_id:
+                # 登录用户：按user_id查找
+                query = query.eq('user_id', user_id)
+            else:
+                # 匿名用户：按device_id查找
+                if not device_id:
+                    raise ValueError("匿名用户必须提供device_id")
+                query = query.eq('device_id', device_id)
+            
+            existing_like = query.execute()
+            
+            if existing_like.data:
+                # 已存在点赞记录，切换状态或删除
+                like_record = existing_like.data[0]
+                if like_record['is_liked']:
+                    # 当前已点赞，删除记录（取消点赞）
+                    self.supabase.table('article_likes').delete().eq('id', like_record['id']).execute()
+                    is_liked = False
+                else:
+                    # 当前未点赞，更新为点赞
+                    self.supabase.table('article_likes').update({
+                        'is_liked': True,
+                        'updated_at': datetime.utcnow().isoformat()
+                    }).eq('id', like_record['id']).execute()
+                    is_liked = True
+            else:
+                # 不存在点赞记录，创建新的点赞
+                like_data = {
+                    'id': str(uuid.uuid4()),
+                    'article_id': article_id,
+                    'is_liked': True,
+                    'created_at': datetime.utcnow().isoformat(),
+                    'updated_at': datetime.utcnow().isoformat()
+                }
+                
+                if user_id:
+                    like_data['user_id'] = user_id
+                if device_id:
+                    like_data['device_id'] = device_id
+                if ip_address:
+                    like_data['ip_address'] = ip_address
+                
+                self.supabase.table('article_likes').insert(like_data).execute()
+                is_liked = True
+            
+            # 获取更新后的文章信息（包含最新的like_count）
+            updated_article = self.get_article_by_id(article_id)
+            like_count = updated_article.get('like_count', 0)
+            
+            return {
+                'success': True,
+                'is_liked': is_liked,
+                'like_count': like_count,
+                'article_id': article_id
+            }
+            
+        except Exception as e:
+            raise Exception(f"点赞操作失败: {str(e)}")
+    
+    def get_article_like_info(self, article_id: str, user_id: Optional[str] = None, device_id: Optional[str] = None):
+        """
+        获取文章的点赞信息
+        
+        Args:
+            article_id: 文章ID
+            user_id: 用户ID（可选）
+            device_id: 设备ID（可选）
+            
+        Returns:
+            dict: 包含点赞状态和总计数的字典
+        """
+        if self.supabase is None:
+            raise RuntimeError("Supabase client not initialized. Call init_app() first.")
+        
+        # 获取文章信息（包含总点赞数）
+        article = self.get_article_by_id(article_id)
+        if not article:
+            raise ValueError("文章不存在")
+        
+        like_count = article.get('like_count', 0)
+        is_liked_by_user = False
+        
+        # 检查当前用户是否已点赞
+        if user_id or device_id:
+            query = self.supabase.table('article_likes').select('*').eq('article_id', article_id).eq('is_liked', True)
+            
+            if user_id:
+                query = query.eq('user_id', user_id)
+            else:
+                query = query.eq('device_id', device_id)
+            
+            like_record = query.execute()
+            is_liked_by_user = len(like_record.data) > 0
+        
+        return {
+            'article_id': article_id,
+            'like_count': like_count,
+            'is_liked_by_user': is_liked_by_user
+        }
+    
+    def get_batch_article_likes(self, article_ids: list, user_id: Optional[str] = None, device_id: Optional[str] = None):
+        """
+        批量获取多篇文章的点赞信息
+        
+        Args:
+            article_ids: 文章ID列表
+            user_id: 用户ID（可选）
+            device_id: 设备ID（可选）
+            
+        Returns:
+            dict: 以article_id为key的点赞信息字典
+        """
+        if self.supabase is None:
+            raise RuntimeError("Supabase client not initialized. Call init_app() first.")
+        
+        if not article_ids:
+            return {}
+        
+        # 获取所有文章的基本信息
+        articles_result = self.supabase.table('articles').select('id, like_count').in_('id', article_ids).execute()
+        articles_data = {article['id']: article for article in articles_result.data}
+        
+        # 获取用户的点赞记录
+        user_likes = {}
+        if user_id or device_id:
+            query = self.supabase.table('article_likes').select('article_id').in_('article_id', article_ids).eq('is_liked', True)
+            
+            if user_id:
+                query = query.eq('user_id', user_id)
+            else:
+                query = query.eq('device_id', device_id)
+            
+            likes_result = query.execute()
+            user_likes = {like['article_id']: True for like in likes_result.data}
+        
+        # 组装返回数据
+        result = {}
+        for article_id in article_ids:
+            article_data = articles_data.get(article_id, {})
+            result[article_id] = {
+                'article_id': article_id,
+                'like_count': article_data.get('like_count', 0),
+                'is_liked_by_user': user_likes.get(article_id, False)
+            }
+        
+        return result
+
 supabase_client = SupabaseClient()
