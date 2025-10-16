@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:poem_verse_app/config/app_config.dart';
 import 'package:poem_verse_app/models/article.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   static String get baseUrl {
@@ -392,6 +394,7 @@ class ApiService {
     {String? deviceId}
   ) async {
     try {
+      final finalDeviceId = deviceId ?? await _getDeviceId();
       final response = await http.post(
         Uri.parse('${AppConfig.backendApiUrl}/articles/$articleId/like'),
         headers: {
@@ -400,7 +403,7 @@ class ApiService {
         },
         body: json.encode({
           'action': isLiked ? 'like' : 'unlike',
-          'device_id': deviceId ?? _getDeviceId(), // 使用设备ID作为匿名用户标识
+          'device_id': finalDeviceId,
         }),
       );
 
@@ -422,7 +425,8 @@ class ApiService {
     {String? deviceId}
   ) async {
     try {
-      final queryParams = deviceId != null ? '?device_id=$deviceId' : '?device_id=${_getDeviceId()}';
+      final finalDeviceId = deviceId ?? await _getDeviceId();
+      final queryParams = '?device_id=$finalDeviceId';
       final response = await http.get(
         Uri.parse('${AppConfig.backendApiUrl}/articles/$articleId/likes$queryParams'),
         headers: {
@@ -449,6 +453,7 @@ class ApiService {
     {String? deviceId}
   ) async {
     try {
+      final finalDeviceId = deviceId ?? await _getDeviceId();
       final response = await http.post(
         Uri.parse('${AppConfig.backendApiUrl}/articles/likes/batch'),
         headers: {
@@ -457,7 +462,7 @@ class ApiService {
         },
         body: json.encode({
           'article_ids': articleIds,
-          'device_id': deviceId ?? _getDeviceId(),
+          'device_id': finalDeviceId,
         }),
       );
 
@@ -473,10 +478,29 @@ class ApiService {
 
   /// 获取设备唯一标识（用于匿名点赞）
   /// 
-  /// 当前实现基于日期生成，同一天内保持一致。
-  /// 如需更稳定的设备标识，可考虑使用 device_info_plus 包获取真实设备ID。
-  static String _getDeviceId() {
-    final daysSinceEpoch = DateTime.now().millisecondsSinceEpoch ~/ 86400000;
-    return 'flutter_device_$daysSinceEpoch';
+  /// 每个设备/应用安装都会生成唯一的ID，存储在本地。
+  /// 应用卸载重装后会重新生成新的ID。
+  static Future<String> _getDeviceId() async {
+    const String key = 'unique_device_id';
+    final prefs = await SharedPreferences.getInstance();
+    
+    // 尝试获取已存储的设备ID
+    String? deviceId = prefs.getString(key);
+    
+    if (deviceId == null || deviceId.isEmpty) {
+      // 如果没有存储的ID，生成一个新的唯一ID
+      deviceId = _generateUniqueDeviceId();
+      await prefs.setString(key, deviceId);
+    }
+    
+    return deviceId;
+  }
+  
+  /// 生成唯一的设备ID
+  static String _generateUniqueDeviceId() {
+    final random = Random();
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final randomNum = random.nextInt(999999);
+    return 'device_${timestamp}_$randomNum';
   }
 }
