@@ -473,8 +473,9 @@ class ApiService {
 
   /// 获取设备唯一标识（用于匿名点赞）
   static String _getDeviceId() {
-    // 使用SharedPreferences存储设备ID，确保同一设备的一致性
-    return 'device_flutter_${DateTime.now().millisecondsSinceEpoch ~/ 86400000}'; // 按天生成，保持一定时间内的一致性
+    // 生成一个相对稳定的设备ID（基于日期，同一天内保持一致）
+    final daysSinceEpoch = DateTime.now().millisecondsSinceEpoch ~/ 86400000;
+    return 'flutter_device_$daysSinceEpoch';
     // TODO: 优化方案 - 使用device_info_plus获取真实设备ID
     // import 'package:device_info_plus/device_info_plus.dart';
     // final deviceInfo = DeviceInfoPlugin();

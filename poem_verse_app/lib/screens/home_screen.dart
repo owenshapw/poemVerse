@@ -140,7 +140,6 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 这里原本有 PoemMagazineScreen 的入口，已删除
                 IconButton(
                   icon: const Icon(Icons.person_outline, color: Colors.white, size: 28),
                   tooltip: '登录',
