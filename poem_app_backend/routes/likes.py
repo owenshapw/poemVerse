@@ -31,7 +31,12 @@ def get_client_info():
     """获取客户端信息（设备ID和IP地址）"""
     data = request.get_json() or {}
     device_id = data.get('device_id') or request.headers.get('X-Device-ID')
+    
+    # 获取IP地址，处理代理转发的多个IP情况
     ip_address = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR'))
+    if ip_address and ',' in ip_address:
+        # 如果有多个IP，取第一个（客户端真实IP）
+        ip_address = ip_address.split(',')[0].strip()
     
     return device_id, ip_address
 
