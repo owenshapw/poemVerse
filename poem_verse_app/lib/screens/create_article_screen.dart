@@ -11,6 +11,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:poem_verse_app/screens/article_preview_screen.dart';
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:http/http.dart' as http;
 import 'package:poem_verse_app/api/api_service.dart';
 
 class CreateArticleScreen extends StatefulWidget {
@@ -63,11 +64,21 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
       _imageOffsetX = rawOffsetX.isFinite ? rawOffsetX.toDouble() : 0.0;
       _imageOffsetY = rawOffsetY.isFinite ? rawOffsetY.toDouble() : 0.0;
       _imageScale = rawScale.isFinite ? rawScale.toDouble() : 1.0;
+      
+      // 初始化预览偏移量为数据库中的值
+      _previewOffsetX = _imageOffsetX;
+      _previewOffsetY = _imageOffsetY;
+      _previewScale = _imageScale;
     } else {
       // ensure defaults finite
       if (!_imageScale.isFinite) _imageScale = 1.0;
       if (!_imageOffsetX.isFinite) _imageOffsetX = 0.0;
       if (!_imageOffsetY.isFinite) _imageOffsetY = 0.0;
+      
+      // 新建时也初始化预览值
+      _previewOffsetX = _imageOffsetX;
+      _previewOffsetY = _imageOffsetY;
+      _previewScale = _imageScale;
     }
   }
 
@@ -109,9 +120,20 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
 
     // 合并：优先使用 preview_ 的临时值，否则使用现有 widget.article 中保存的值，最后备选默认
     final previewUrl = _previewImageUrl ?? widget.article?.imageUrl ?? '';
-    final finalImageOffsetX = _previewOffsetX ?? widget.article?.imageOffsetX ?? _imageOffsetX;
-    final finalImageOffsetY = _previewOffsetY ?? widget.article?.imageOffsetY ?? _imageOffsetY;
-    final finalImageScale = _previewScale ?? widget.article?.imageScale ?? _imageScale;
+    final finalImageOffsetX = _previewOffsetX ?? _imageOffsetX;
+    final finalImageOffsetY = _previewOffsetY ?? _imageOffsetY;
+    final finalImageScale = _previewScale ?? _imageScale;
+    
+    // 调试信息：打印实际要保存的偏移量数据
+    debugPrint('=== 保存图片偏移量数据 ===');
+    debugPrint('_previewOffsetX: $_previewOffsetX');
+    debugPrint('_previewOffsetY: $_previewOffsetY');
+    debugPrint('_imageOffsetX: $_imageOffsetX');
+    debugPrint('_imageOffsetY: $_imageOffsetY');
+    debugPrint('finalImageOffsetX: $finalImageOffsetX');
+    debugPrint('finalImageOffsetY: $finalImageOffsetY');
+    debugPrint('finalImageScale: $finalImageScale');
+    debugPrint('========================');
 
     final body = {
       'title': _titleController.text,
@@ -125,6 +147,8 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
       'text_position_x': _textPositionX,
       'text_position_y': _textPositionY,
     };
+    
+    debugPrint('保存的body数据: $body');
 
     // 防御性检查：articleId 不能是一个 URL（避免误把图片 URL 当 id）
     if (widget.isEdit == true) {
@@ -136,12 +160,42 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
       }
     }
 
-    final resp = await ApiService.updateArticleWithBody(articleId, body, token: token);
-    debugPrint('Update attempt status=${resp.statusCode} body=${resp.body}');
+    debugPrint('发送到服务器的数据: $body');
+    
+    http.Response resp;
+    if (widget.isEdit == true && articleId.isNotEmpty) {
+      // 编辑模式
+      debugPrint('使用编辑模式，articleId=$articleId');
+      resp = await ApiService.updateArticleWithBody(articleId, body, token: token);
+    } else {
+      // 创建模式
+      debugPrint('使用创建模式');
+      resp = await ApiService.createArticleWithBody(body, token: token);
+    }
+    
+    debugPrint('API调用结果 status=${resp.statusCode} body=${resp.body}');
 
-    if (resp.statusCode == 200 || resp.statusCode == 204) {
+    if (resp.statusCode == 200 || resp.statusCode == 204 || resp.statusCode == 201) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('保存成功')));
+        
+        // 强制清除图片缓存
+        try {
+          PaintingBinding.instance.imageCache.clear();
+          PaintingBinding.instance.imageCache.clearLiveImages();
+          debugPrint('图片缓存已清理');
+        } catch (e) {
+          debugPrint('清理图片缓存失败: $e');
+        }
+        
+        // 发布成功后的导航处理
+        if (widget.isEdit) {
+          // 编辑模式：返回true通知上级页面刷新
+          Navigator.of(context).pop(true);
+        } else {
+          // 创建模式：返回true，让调用者决定导航
+          Navigator.of(context).pop(true);
+        }
       }
     } else {
       if (mounted) {
@@ -369,7 +423,7 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
                           children: [
                             Icon(Icons.help_outline, size: 16, color: Colors.grey[600]),
                             SizedBox(width: 4),
-                            Text('上下拖动调整图片位置', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                            Text('上下拖动调整图片位置（发布后保持此位置）', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                           ],
                         ),
                       ),
@@ -385,13 +439,19 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
                       imageUrl: ApiService.getImageUrlWithVariant(_previewImageUrl ?? '', 'public'),
                       width: double.infinity,
                       height: 200, // ensure preview uses same height
-                      initialOffsetX: _previewOffsetX ?? 0.0,
-                      initialOffsetY: _previewOffsetY ?? 0.0,
-                      initialScale: _previewScale ?? 1.0,
+                      initialOffsetX: _previewOffsetX ?? _imageOffsetX,
+                      initialOffsetY: _previewOffsetY ?? _imageOffsetY,
+                      initialScale: _previewScale ?? _imageScale,
                       onTransformChanged: (ox, oy, s) {
+                        debugPrint('图片位置变化: offsetX=$ox, offsetY=$oy, scale=$s');
                         _previewOffsetX = ox;
                         _previewOffsetY = oy;
                         _previewScale = s;
+                        
+                        // 实时更新主值，保证下次打开时位置正确
+                        _imageOffsetX = ox;
+                        _imageOffsetY = oy;
+                        _imageScale = s;
                       },
                       isInteractive: true,
                       fit: BoxFit.cover,
@@ -430,22 +490,7 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
                           ),
                         ),
                       ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            setState(() {
-                              _imageOffsetX = 0.0;
-                              _imageOffsetY = 0.0;
-                              _imageScale = 1.0;
-                            });
-                          },
-                          icon: Icon(Icons.center_focus_strong, size: 18),
-                          label: Text('重置图片'),
-                          style: OutlinedButton.styleFrom(foregroundColor: Colors.deepPurple),
-                        ),
-                      ),
-                      SizedBox(width: 8),
+                      SizedBox(width: 16),
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: _pickAndUploadImage,

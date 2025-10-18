@@ -10,6 +10,7 @@ import 'package:poem_verse_app/api/api_service.dart';
 import 'package:poem_verse_app/screens/create_article_screen.dart';
 import 'package:poem_verse_app/screens/author_works_screen.dart';
 import 'package:screenshot/screenshot.dart';
+import 'package:poem_verse_app/widgets/interactive_image_preview.dart';
 
 class ArticleDetailScreen extends StatefulWidget {
   final List<Article> articles;
@@ -166,7 +167,29 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     );
     
     if (updated == true && mounted) {
-      Navigator.of(context).pop();
+      // 编辑成功后重新获取文章数据，更新当前显示
+      try {
+        // 清理图片缓存
+        PaintingBinding.instance.imageCache.clear();
+        PaintingBinding.instance.imageCache.clearLiveImages();
+        debugPrint('图片缓存已清理');
+        
+        final updatedArticle = await ApiService.getArticleDetail(_article.id);
+        if (mounted) {
+          setState(() {
+            _article = updatedArticle;
+            // 更新articles列表中的对应文章
+            widget.articles[_currentPage] = updatedArticle;
+          });
+          debugPrint('文章编辑后刷新成功: imageOffsetY=${updatedArticle.imageOffsetY}');
+        }
+      } catch (e) {
+        debugPrint('刷新文章数据失败: $e');
+        // 如果刷新失败，仍然返回上一级
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
+      }
     }
   }
 
@@ -295,7 +318,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                                 child: Transform.scale(
                                   scale: scale,
                                   child: Container(
-                                    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 24),
+                                    margin: const EdgeInsets.fromLTRB(8, 24, 8, 15), // 底部margin减尊10px，让卡片高度向下延伸10px
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(20),
                                       color: Colors.white.withOpacity(opacity),
@@ -321,49 +344,64 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                                                       Colors.white.withOpacity(1.0 - opacity),
                                                       BlendMode.srcATop,
                                                     ),
-                                                    child: Image.network(
-                                                      ApiService.buildImageUrl(article.imageUrl),
-                                                      fit: BoxFit.cover,
+                                                    child: InteractiveImagePreview(
+                                                      imageUrl: ApiService.getImageUrlWithVariant(article.imageUrl, 'public'),
                                                       width: double.infinity,
+                                                      height: double.infinity,
+                                                      initialOffsetX: 0.0, // X轴偏移为0（禁用水平移动）
+                                                      initialOffsetY: article.imageOffsetY ?? 0.0, // 继承创建页面调整的Y轴偏移
+                                                      initialScale: 1.0, // 缩放为1（禁用缩放）
+                                                      isInteractive: false, // 禁用交互，只显示不允许调整
+                                                      fit: BoxFit.cover,
                                                     ),
                                                   )
                                                 : Container(color: Colors.grey[200]!.withOpacity(opacity)),
                                           ),
-                                          Flexible(
-                                            child: SingleChildScrollView(
-                                              child: Padding(
-                                                padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-                                                child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      article.title,
-                                                      style: TextStyle(
-                                                        fontSize: 24,
-                                                        fontWeight: FontWeight.bold,
-                                                        color: Colors.black.withOpacity(opacity),
+                                          Expanded(
+                                            child: Column(
+                                              children: [
+                                                // 文本区域，限制高度
+                                                Expanded(
+                                                  child: Container(
+                                                    margin: const EdgeInsets.only(bottom: 20), // 文本框距离卡片底部20px
+                                                    child: SingleChildScrollView(
+                                                      child: Padding(
+                                                        padding: const EdgeInsets.fromLTRB(24, 20, 24, 0), // 底部不需要padding，由margin控制
+                                                        child: Column(
+                                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                                          children: [
+                                                            Text(
+                                                              article.title,
+                                                              style: TextStyle(
+                                                                fontSize: 24,
+                                                                fontWeight: FontWeight.bold,
+                                                                color: Colors.black.withOpacity(opacity),
+                                                              ),
+                                                            ),
+                                                            const SizedBox(height: 10),
+                                                            Text(
+                                                              article.author,
+                                                              style: TextStyle(
+                                                                fontSize: 15,
+                                                                color: Colors.black54.withOpacity(opacity),
+                                                              ),
+                                                            ),
+                                                            const SizedBox(height: 18),
+                                                            Text(
+                                                              article.content,
+                                                              style: TextStyle(
+                                                                fontSize: 16,
+                                                                color: Colors.black87.withOpacity(opacity),
+                                                                height: 1.6,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
                                                       ),
                                                     ),
-                                                    const SizedBox(height: 10),
-                                                    Text(
-                                                      article.author,
-                                                      style: TextStyle(
-                                                        fontSize: 15,
-                                                        color: Colors.black54.withOpacity(opacity),
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 18),
-                                                    Text(
-                                                      article.content,
-                                                      style: TextStyle(
-                                                        fontSize: 16,
-                                                        color: Colors.black87.withOpacity(opacity),
-                                                        height: 1.6,
-                                                      ),
-                                                    ),
-                                                  ],
+                                                  ),
                                                 ),
-                                              ),
+                                              ],
                                             ),
                                           ),
                                         ],

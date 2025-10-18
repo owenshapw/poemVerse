@@ -210,13 +210,14 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Stack(
             children: [
               Positioned.fill(
-                child: TransformedImage(
+                child: InteractiveImagePreview(
                   imageUrl: ApiService.getImageUrlWithVariant(article.imageUrl, 'public'),
                   width: double.infinity,
                   height: 200,
-                  offsetX: article.imageOffsetX ?? 0.0,
-                  offsetY: article.imageOffsetY ?? 0.0,
-                  scale: article.imageScale ?? 1.0,
+                  initialOffsetX: 0.0, // X轴偏移为0（禁用水平移动）
+                  initialOffsetY: article.imageOffsetY ?? 0.0, // 继承创建页面调整的Y轴偏移
+                  initialScale: 1.0, // 缩放为1（禁用缩放）
+                  isInteractive: false, // 禁用交互，只显示不允许调整
                   fit: BoxFit.cover,
                 ),
               ),
