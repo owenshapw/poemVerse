@@ -100,6 +100,10 @@ def create_article(current_user_id):
         text_position_x = data.get('text_position_x')
         text_position_y = data.get('text_position_y')
         preview_image_url = data.get('preview_image_url')
+        # 新增：读取图片位置/缩放字段
+        image_offset_x = data.get('image_offset_x')
+        image_offset_y = data.get('image_offset_y')
+        image_scale = data.get('image_scale')
 
         if not title or not content:
             return jsonify({'error': '标题和内容不能为空'}), 400
@@ -120,7 +124,10 @@ def create_article(current_user_id):
             current_user_id, title, content, tags, author, 
             text_position_x=text_position_x, 
             text_position_y=text_position_y, 
-            preview_image_url=preview_image_url
+            preview_image_url=preview_image_url,
+            image_offset_x=image_offset_x,        # <- 传入
+            image_offset_y=image_offset_y,        # <- 传入
+            image_scale=image_scale               # <- 传入
         )
         
         if not article:
@@ -165,6 +172,14 @@ def update_article(article_id, current_user_id):
             update_data['text_position_x'] = float(data['text_position_x'])
         if 'text_position_y' in data and data['text_position_y'] is not None:
             update_data['text_position_y'] = float(data['text_position_y'])
+
+        # 新增：图片偏移/缩放字段支持
+        if 'image_offset_x' in data and data['image_offset_x'] is not None:
+            update_data['image_offset_x'] = float(data['image_offset_x'])
+        if 'image_offset_y' in data and data['image_offset_y'] is not None:
+            update_data['image_offset_y'] = float(data['image_offset_y'])
+        if 'image_scale' in data and data['image_scale'] is not None:
+            update_data['image_scale'] = float(data['image_scale'])
 
         # Handle the image URL separately to ensure it's formatted correctly
         if 'preview_image_url' in data:

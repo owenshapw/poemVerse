@@ -40,7 +40,7 @@ class SupabaseClient:
             return f"https://imagedelivery.net/{account_hash}/{image_id}/headphoto"
         return url
 
-    def create_article(self, user_id: str, title: str, content: str, tags: list, author: Optional[str] = None, text_position_x: Optional[float] = None, text_position_y: Optional[float] = None, preview_image_url: Optional[str] = None):
+    def create_article(self, user_id: str, title: str, content: str, tags: list, author: Optional[str] = None, text_position_x: Optional[float] = None, text_position_y: Optional[float] = None, preview_image_url: Optional[str] = None, image_offset_x: Optional[float] = None, image_offset_y: Optional[float] = None, image_scale: Optional[float] = None):
         """创建文章"""
         if self.supabase is None:
             raise RuntimeError("Supabase client not initialized. Call init_app() first.")
@@ -60,7 +60,11 @@ class SupabaseClient:
             'updated_at': datetime.utcnow().isoformat(),
             'like_count': 0,
             'text_position_x': text_position_x,
-            'text_position_y': text_position_y
+            'text_position_y': text_position_y,
+            # 新增：保存图片偏移与缩放
+            'image_offset_x': image_offset_x,
+            'image_offset_y': image_offset_y,
+            'image_scale': image_scale
         }
         try:
             article_data['author'] = author_name
