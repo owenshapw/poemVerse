@@ -104,8 +104,18 @@ class SupabaseClient:
         if self.supabase is None:
             raise RuntimeError("Supabase client not initialized. Call init_app() first.")
         formatted_url = self._format_image_url(image_url)
-        result = self.supabase.table('articles').update({'image_url': formatted_url}).eq('id', article_id).select('*').execute()
-        return result.data[0] if result.data else None
+        # 执行 update，然后兼容不同版本返回值格式；如 update 不返回行则 fallback 再查询一次
+        resp = self.supabase.table('articles').update({'image_url': formatted_url}).eq('id', article_id).execute()
+        data = None
+        if resp is None:
+            data = None
+        elif hasattr(resp, 'data'):
+            data = resp.data
+        elif isinstance(resp, dict) and 'data' in resp:
+            data = resp.get('data')
+        if data:
+            return data[0] if isinstance(data, list) else data
+        return self.get_article_by_id(article_id)
 
     def update_article_fields(self, article_id: str, user_id: str, update_data: dict):
         """
@@ -115,9 +125,12 @@ class SupabaseClient:
          - parsing resp.data / resp.get('data') fallback
          - if update response doesn't contain row, fetch by id as fallback
         """
+        if self.supabase is None:
+            raise RuntimeError("Supabase client not initialized. Call init_app() first.")
         try:
             # 使用 table(...).update(...).eq(...).execute() 是较新/通用的方式
-            resp = self.client.table('articles').update(update_data).eq('id', article_id).execute()
+            # 注意：使用 self.supabase（不是 self.client），并避免在 eq() 后再调用 select()
+            resp = self.supabase.table('articles').update(update_data).eq('id', article_id).execute()
 
             # 多种返回结构兼容处理
             data = None
@@ -127,6 +140,7 @@ class SupabaseClient:
                 data = resp.data
             elif isinstance(resp, dict) and 'data' in resp:
                 data = resp.get('data')
+
             # 有数据且为列表时返回第一项
             if data:
                 return data[0] if isinstance(data, list) else data
