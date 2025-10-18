@@ -323,7 +323,8 @@ class ApiService {
 
   static Future<http.Response> createArticleWithBody(Map<String,dynamic> body, {String? token}) async {
     final base = dotenv.env['BACKEND_API_URL'] ?? AppConfig.backendApiUrl;
-    final url = '${base.replaceAll(RegExp(r'/$'), '')}/api/articles';
+    final normalized = base.replaceAll(RegExp(r'/$'), '');
+    final url = normalized.endsWith('/api') ? '$normalized/articles' : '$normalized/api/articles';
     final headers = _buildHeaders(token: token);
 
     debugPrint('ApiService.createArticleWithBody -> URL: $url');
@@ -572,10 +573,10 @@ class ApiService {
     if (token.isEmpty) throw ArgumentError('updateArticleWithBody: token is empty');
 
     final base = dotenv.env['BACKEND_API_URL'] ?? AppConfig.backendApiUrl;
-    final url = '${base.replaceAll(RegExp(r'/$'), '')}/api/articles/$id';
+    final normalized = base.replaceAll(RegExp(r'/$'), '');
+    final url = normalized.endsWith('/api') ? '$normalized/articles/$id' : '$normalized/api/articles/$id';
     final headers = _buildHeaders(token: token);
 
-    // debug 输出 headers/body，用于服务器端对比（注意不要在生产日志泄露完整 token）
     final maskedHeaders = Map<String, String>.from(headers);
     if (maskedHeaders.containsKey('Authorization')) {
       final v = maskedHeaders['Authorization']!;

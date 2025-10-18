@@ -108,12 +108,40 @@ class SupabaseClient:
         return result.data[0] if result.data else None
 
     def update_article_fields(self, article_id: str, user_id: str, update_data: dict):
-        """根据ID更新文章部分字段，并验证用户所有权"""
-        if self.supabase is None:
-            raise RuntimeError("Supabase client not initialized. Call init_app() first.")
-        update_data['updated_at'] = datetime.utcnow().isoformat()
-        result = self.supabase.table('articles').update(update_data).eq('id', article_id).eq('user_id', user_id).select('*').execute()
-        return result.data[0] if result.data else None
+        """
+        Update article fields and return the updated row (or None on failure).
+        Compatible with different supabase-py versions by:
+         - calling .table(...).update(...).eq(...).execute()
+         - parsing resp.data / resp.get('data') fallback
+         - if update response doesn't contain row, fetch by id as fallback
+        """
+        try:
+            # 使用 table(...).update(...).eq(...).execute() 是较新/通用的方式
+            resp = self.client.table('articles').update(update_data).eq('id', article_id).execute()
+
+            # 多种返回结构兼容处理
+            data = None
+            if resp is None:
+                data = None
+            elif hasattr(resp, 'data'):              # e.g. SyncResponse object
+                data = resp.data
+            elif isinstance(resp, dict) and 'data' in resp:
+                data = resp.get('data')
+            # 有数据且为列表时返回第一项
+            if data:
+                return data[0] if isinstance(data, list) else data
+
+            # 兼容性保底：update 可能不返回行，主动再查询一次并返回
+            return self.get_article_by_id(article_id)
+
+        except Exception as e:
+            # 记录错误以便在 render/日志中定位（保留原始异常信息）
+            try:
+                import logging
+                logging.exception("update_article_fields error")
+            except Exception:
+                print(f"update_article_fields error: {e}")
+            return None
 
     def create_comment(self, article_id: str, user_id: str, content: str):
         """创建评论"""
