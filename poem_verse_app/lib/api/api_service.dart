@@ -2,16 +2,18 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/foundation.dart'; // added for debugPrint
 import 'package:poem_verse_app/config/app_config.dart';
 import 'package:poem_verse_app/models/article.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   static String get baseUrl {
-    // 优先使用环境变量，如果没有则使用配置类
-    final url = dotenv.env['BACKEND_URL'];
-    if (url != null) {
-      return url;
+    try {
+      final url = dotenv.env['BACKEND_API_URL'];
+      if (url != null && url.isNotEmpty) return url;
+    } catch (e) {
+      debugPrint('dotenv not initialized, falling back to AppConfig.backendApiUrl');
     }
     return AppConfig.backendApiUrl;
   }
@@ -33,6 +35,7 @@ class ApiService {
 
 
       if (response.statusCode == 200) {
+        debugPrint('API fetchHomeArticles body=${response.body}');
         return json.decode(response.body);
       } else if (response.statusCode == 418) {
         throw Exception('418 error, trying backup URL');
@@ -260,7 +263,9 @@ class ApiService {
   }
 
   static Future<Article?> createArticle(
-      String token, String title, String content, List<String> tags, String author, {String? previewImageUrl, double? textPositionY, double? textPositionX}) async {
+      String token, String title, String content, List<String> tags, String author, 
+      {String? previewImageUrl, double? textPositionY, double? textPositionX, 
+       double? imageOffsetX, double? imageOffsetY, double? imageScale}) async {
     final Map<String, dynamic> body = {
       'title': title,
       'content': content,
@@ -276,6 +281,15 @@ class ApiService {
     }
     if (textPositionY != null) {
       body['text_position_y'] = textPositionY;
+    }
+    if (imageOffsetX != null) {
+      body['image_offset_x'] = imageOffsetX;
+    }
+    if (imageOffsetY != null) {
+      body['image_offset_y'] = imageOffsetY;
+    }
+    if (imageScale != null) {
+      body['image_scale'] = imageScale;
     }
     
     final response = await http.post(
@@ -293,6 +307,30 @@ class ApiService {
     } else {
       return null;
     }
+  }
+
+  // helper: 构造 headers 并可选加入 token
+  static Map<String, String> _buildHeaders({String? token}) {
+    final headers = <String, String>{
+      'Content-Type': 'application/json; charset=UTF-8',
+      'Accept': 'application/json',
+    };
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    return headers;
+  }
+
+  static Future<http.Response> createArticleWithBody(Map<String,dynamic> body, {String? token}) async {
+    final base = dotenv.env['BACKEND_API_URL'] ?? AppConfig.backendApiUrl;
+    final url = '${base.replaceAll(RegExp(r'/$'), '')}/api/articles';
+    final headers = _buildHeaders(token: token);
+
+    debugPrint('ApiService.createArticleWithBody -> URL: $url');
+    debugPrint('ApiService.createArticleWithBody -> Headers: $headers');
+    debugPrint('ApiService.createArticleWithBody -> Body keys: ${body.keys}');
+
+    return await http.post(Uri.parse(url), headers: headers, body: jsonEncode(body));
   }
 
   static Future<http.Response> generateImage(String token, String articleId) async {
@@ -343,13 +381,35 @@ class ApiService {
     );
   }
 
-  static String getImageUrlWithVariant(String? imageUrl, String variant) {
-    if (imageUrl == null || imageUrl.isEmpty) {
-      return '';
-    }
-    String fullUrl = buildImageUrl(imageUrl);
-    return fullUrl.replaceAll('headphoto', variant);
+  static String getImageUrlWithVariant(String src, String variant) {
+  if (src.trim().isEmpty) return '';
+
+  // Ensure absolute URL
+  String maybeSrc = src;
+  if (!maybeSrc.startsWith(RegExp(r'https?://'))) {
+    maybeSrc = '${AppConfig.backendBaseUrl}$maybeSrc';
   }
+
+  final uri = Uri.tryParse(maybeSrc);
+  if (uri == null) return maybeSrc;
+
+  if (variant.trim().isEmpty) {
+    debugPrint('ApiService.getImageUrlWithVariant src=$src variant=<none> out=${uri.toString()}');
+    return uri.toString();
+  }
+
+  // Replace the last path segment with the requested variant
+  final segments = List<String>.from(uri.pathSegments);
+  if (segments.isEmpty) {
+    segments.add(variant);
+  } else {
+    segments[segments.length - 1] = variant;
+  }
+
+  final outUri = uri.replace(pathSegments: segments);
+  debugPrint('ApiService.getImageUrlWithVariant src=$src variant=$variant out=${outUri.toString()}');
+  return outUri.toString();
+}
 
   static String buildImageUrl(String? imageUrl) {
     
@@ -502,5 +562,31 @@ class ApiService {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final randomNum = random.nextInt(999999);
     return 'device_${timestamp}_$randomNum';
+  }
+
+  static Future<http.Response> updateArticleWithBody(
+      String id, Map<String, dynamic> body, {
+      required String token,
+    }) async {
+    if (id.isEmpty) throw ArgumentError('updateArticleWithBody: id is empty');
+    if (token.isEmpty) throw ArgumentError('updateArticleWithBody: token is empty');
+
+    final base = dotenv.env['BACKEND_API_URL'] ?? AppConfig.backendApiUrl;
+    final url = '${base.replaceAll(RegExp(r'/$'), '')}/api/articles/$id';
+    final headers = _buildHeaders(token: token);
+
+    // debug 输出 headers/body，用于服务器端对比（注意不要在生产日志泄露完整 token）
+    final maskedHeaders = Map<String, String>.from(headers);
+    if (maskedHeaders.containsKey('Authorization')) {
+      final v = maskedHeaders['Authorization']!;
+      if (v.length > 20) maskedHeaders['Authorization'] = v.replaceRange(10, v.length-6, '...'); 
+    }
+    debugPrint('ApiService.updateArticleWithBody -> URL: $url');
+    debugPrint('ApiService.updateArticleWithBody -> Headers: $maskedHeaders');
+    debugPrint('ApiService.updateArticleWithBody -> Body: $body');
+
+    final resp = await http.put(Uri.parse(url), headers: headers, body: jsonEncode(body));
+    debugPrint('PUT Status=${resp.statusCode} body=${resp.body}');
+    return resp;
   }
 }

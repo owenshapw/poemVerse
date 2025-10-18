@@ -9,7 +9,6 @@ import 'package:poem_verse_app/providers/article_provider.dart';
 import 'package:poem_verse_app/api/api_service.dart';
 import 'package:poem_verse_app/screens/create_article_screen.dart';
 import 'package:poem_verse_app/screens/author_works_screen.dart';
-import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:screenshot/screenshot.dart';
 
 class ArticleDetailScreen extends StatefulWidget {
@@ -171,43 +170,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     }
   }
 
-  Future<void> _saveImageToGallery() async {
-    try {
-      final imageBytes = await _screenshotController.capture();
-      if (imageBytes == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('截图失败')),
-          );
-        }
-        return;
-      }
-      final result = await ImageGallerySaver.saveImage(
-        imageBytes,
-        quality: 100,
-        name: "${_article.author}_${DateTime.now().millisecondsSinceEpoch}",
-      );
-      if (result['isSuccess'] == true) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('图片已保存到相册'), backgroundColor: Colors.green),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('保存失败，请检查权限'), backgroundColor: Colors.red),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('保存失败: $e'), backgroundColor: Colors.red),
-        );
-      }
-    }
-  }
+  
 
   @override
   Widget build(BuildContext context) {
@@ -216,58 +179,69 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // 顶部栏 - 采用author_magazine_screen样式，但保留编辑删除按钮
+            // 顶部栏 - 简洁设计
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
+                  // 返回按钮
                   IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.black87, size: 28),
+                    icon: const Icon(Icons.arrow_back, color: Colors.black54, size: 24),
                     onPressed: () => Navigator.of(context).pop(),
+                    tooltip: '返回',
                   ),
-                  Text(
-                    _article.author,
-                    style: const TextStyle(
-                      color: Colors.black87,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                  
+                  // 作者名称
+                  Expanded(
+                    child: Text(
+                      _article.author,
+                      style: const TextStyle(
+                        color: Colors.black87,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  const Spacer(),
                   
-                  // 作者权限按钮
-                  if (_isAuthor(context)) ...[
-                    IconButton(
-                      icon: const Icon(Icons.edit_outlined, color: Colors.black87),
-                      tooltip: '编辑',
-                      onPressed: _isDeleting ? null : _editArticle,
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.black87),
-                      tooltip: '删除',
-                      onPressed: _isDeleting ? null : _deleteArticle,
-                    ),
-                  ],
-                  
-                  IconButton(
-                    icon: const Icon(Icons.auto_awesome, color: Colors.deepPurple, size: 28),
-                    tooltip: '切换风格',
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => AuthorWorksScreen(
-                            author: _article.author,
-                            initialArticle: _article,
-                          ),
+                  // 右侧按钮组
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // 作者权限按钮：编辑
+                      if (_isAuthor(context)) ...[
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined, color: Colors.black54, size: 20),
+                          tooltip: '编辑',
+                          onPressed: _isDeleting ? null : _editArticle,
                         ),
-                      );
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.download, color: Colors.deepPurple, size: 26),
-                    tooltip: '保存为图片',
-                    onPressed: _saveImageToGallery,
+                      ],
+                      
+                      // 星星按钮（作品集）
+                      IconButton(
+                        icon: const Icon(Icons.auto_awesome, color: Colors.black54, size: 20),
+                        tooltip: '作品集',
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => AuthorWorksScreen(
+                                author: _article.author,
+                                initialArticle: _article,
+                              ),
+                        ),
+                          );
+                        },
+                      ),
+                      
+                      // 作者权限按钮：删除
+                      if (_isAuthor(context)) ...[
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                          tooltip: '删除',
+                          onPressed: _isDeleting ? null : _deleteArticle,
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ),
@@ -275,138 +249,146 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
             
             // 内容区 - 采用author_magazine_screen样式
             Expanded(
-              child: Center(
-                child: PageView.builder(
-                  controller: _pageController,
-                  itemCount: widget.articles.length,
-                  physics: const BouncingScrollPhysics(),
-                  onPageChanged: (index) {
-                    setState(() {
-                      _currentPage = index;
-                      _article = widget.articles[index];
-                    });
-                  },
-                  itemBuilder: (context, index) {
-                    final article = widget.articles[index];
-                    return LayoutBuilder(
-                      builder: (context, constraints) {
-                        return AnimatedBuilder(
-                          animation: _pageController,
-                          builder: (context, child) {
-                            double scale = 1.0;
-                            double opacity = 1.0;
-                            
-                            if (_pageController.position.haveDimensions) {
-                              double page = _pageController.page ?? index.toDouble();
-                              double distance = (page - index).abs();
+              child: Container(
+                // 为阴影提供额外的裁剪空间
+                clipBehavior: Clip.none,
+                child: Center(
+                  child: PageView.builder(
+                    controller: _pageController,
+                    itemCount: widget.articles.length,
+                    physics: const BouncingScrollPhysics(),
+                    onPageChanged: (index) {
+                      setState(() {
+                        _currentPage = index;
+                        _article = widget.articles[index];
+                      });
+                    },
+                    itemBuilder: (context, index) {
+                      final article = widget.articles[index];
+                      return Container(
+                      // 防止阴影被父容器裁剪
+                      clipBehavior: Clip.none,
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          return AnimatedBuilder(
+                            animation: _pageController,
+                            builder: (context, child) {
+                              double scale = 1.0;
+                              double opacity = 1.0;
                               
-                              // 缩放计算：当前页面为1.0，相邻页面为0.8，更远的为0.7
-                              if (distance <= 1.0) {
-                                scale = 1.0 - (distance * 0.2); // 范围 0.8-1.0
-                              } else {
-                                scale = 0.7; // 更远的页面
+                              if (_pageController.position.haveDimensions) {
+                                double page = _pageController.page ?? index.toDouble();
+                                double distance = (page - index).abs();
+                                
+                                // 缩放计算：当前页面为1.0，相邻页面为0.8，更远的为0.7
+                                if (distance <= 1.0) {
+                                  scale = 1.0 - (distance * 0.2); // 范围 0.8-1.0
+                                } else {
+                                  scale = 0.7; // 更远的页面
+                                }
+                                
+                                // 透明度计算
+                                opacity = (1.0 - distance.clamp(0.0, 1.0) * 0.3).clamp(0.7, 1.0);
                               }
                               
-                              // 透明度计算
-                              opacity = (1.0 - distance.clamp(0.0, 1.0) * 0.3).clamp(0.7, 1.0);
-                            }
-                            
-                            final cardWidget = Center(
-                              child: Transform.scale(
-                                scale: scale,
-                                child: Container(
-                                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(20),
-                                    color: Colors.white.withOpacity(opacity),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.15 * scale * opacity),
-                                        blurRadius: 20 * scale,
-                                        spreadRadius: 3 * scale,
-                                        offset: Offset(0, 10 * scale),
-                                      ),
-                                    ],
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(20),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        AspectRatio(
-                                          aspectRatio: 4 / 2.8,
-                                          child: article.imageUrl.isNotEmpty
-                                              ? ColorFiltered(
-                                                  colorFilter: ColorFilter.mode(
-                                                    Colors.white.withOpacity(1.0 - opacity),
-                                                    BlendMode.srcATop,
-                                                  ),
-                                                  child: Image.network(
-                                                    ApiService.buildImageUrl(article.imageUrl),
-                                                    fit: BoxFit.cover,
-                                                    width: double.infinity,
-                                                  ),
-                                                )
-                                              : Container(color: Colors.grey[200]!.withOpacity(opacity)),
-                                        ),
-                                        Flexible(
-                                          child: SingleChildScrollView(
-                                            child: Padding(
-                                              padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    article.title,
-                                                    style: TextStyle(
-                                                      fontSize: 24,
-                                                      fontWeight: FontWeight.bold,
-                                                      color: Colors.black.withOpacity(opacity),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 10),
-                                                  Text(
-                                                    article.author,
-                                                    style: TextStyle(
-                                                      fontSize: 15,
-                                                      color: Colors.black54.withOpacity(opacity),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 18),
-                                                  Text(
-                                                    article.content,
-                                                    style: TextStyle(
-                                                      fontSize: 16,
-                                                      color: Colors.black87.withOpacity(opacity),
-                                                      height: 1.6,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
+                              final cardWidget = Center(
+                                child: Transform.scale(
+                                  scale: scale,
+                                  child: Container(
+                                    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 24),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(20),
+                                      color: Colors.white.withOpacity(opacity),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.15 * scale * opacity),
+                                          blurRadius: 20 * scale,
+                                          spreadRadius: 3 * scale,
+                                          offset: Offset(0, 10 * scale),
                                         ),
                                       ],
                                     ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(20),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          AspectRatio(
+                                            aspectRatio: 4 / 2.8,
+                                            child: article.imageUrl.isNotEmpty
+                                                ? ColorFiltered(
+                                                    colorFilter: ColorFilter.mode(
+                                                      Colors.white.withOpacity(1.0 - opacity),
+                                                      BlendMode.srcATop,
+                                                    ),
+                                                    child: Image.network(
+                                                      ApiService.buildImageUrl(article.imageUrl),
+                                                      fit: BoxFit.cover,
+                                                      width: double.infinity,
+                                                    ),
+                                                  )
+                                                : Container(color: Colors.grey[200]!.withOpacity(opacity)),
+                                          ),
+                                          Flexible(
+                                            child: SingleChildScrollView(
+                                              child: Padding(
+                                                padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      article.title,
+                                                      style: TextStyle(
+                                                        fontSize: 24,
+                                                        fontWeight: FontWeight.bold,
+                                                        color: Colors.black.withOpacity(opacity),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 10),
+                                                    Text(
+                                                      article.author,
+                                                      style: TextStyle(
+                                                        fontSize: 15,
+                                                        color: Colors.black54.withOpacity(opacity),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 18),
+                                                    Text(
+                                                      article.content,
+                                                      style: TextStyle(
+                                                        fontSize: 16,
+                                                        color: Colors.black87.withOpacity(opacity),
+                                                        height: 1.6,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            );
-                            
-                            // 只对当前页面应用Screenshot包装
-                            if (index == _currentPage) {
-                              return Screenshot(
-                                controller: _screenshotController,
-                                child: cardWidget,
                               );
-                            } else {
-                              return cardWidget;
-                            }
-                          },
-                        );
-                      },
-                    );
-                  },
+                              
+                              // 只对当前页面应用Screenshot包装
+                              if (index == _currentPage) {
+                                return Screenshot(
+                                  controller: _screenshotController,
+                                  child: cardWidget,
+                                );
+                              } else {
+                                return cardWidget;
+                              }
+                            },
+                          );
+                        },
+                      ),
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
@@ -415,5 +397,4 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       ),
     );
   }
-
   }

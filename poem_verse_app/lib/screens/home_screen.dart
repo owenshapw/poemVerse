@@ -9,7 +9,7 @@ import 'package:poem_verse_app/providers/article_provider.dart';
 import 'dart:ui';
 import 'package:flutter/services.dart';
 import 'package:poem_verse_app/screens/login_screen.dart';
-import 'package:poem_verse_app/widgets/simple_network_image.dart';
+import 'package:poem_verse_app/widgets/interactive_image_preview.dart';
 import 'package:poem_verse_app/screens/author_works_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -165,6 +165,9 @@ class _HomeScreenState extends State<HomeScreen> {
     List<String> lines = content.split('\n');
     String previewText = lines.take(1).join('\n');
 
+    final topUrl = ApiService.getImageUrlWithVariant(article.imageUrl, 'headphoto');
+    debugPrint('HOME top article id=${article.id} imageUrl=${article.imageUrl} public=$topUrl');
+
     return GestureDetector(
       onTap: () {
         try {
@@ -207,9 +210,13 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Stack(
             children: [
               Positioned.fill(
-                child: SimpleNetworkImage(
-                  imageUrl:
-                      ApiService.getImageUrlWithVariant(article.imageUrl, 'public'),
+                child: TransformedImage(
+                  imageUrl: ApiService.getImageUrlWithVariant(article.imageUrl, 'public'),
+                  width: double.infinity,
+                  height: 200,
+                  offsetX: article.imageOffsetX ?? 0.0,
+                  offsetY: article.imageOffsetY ?? 0.0,
+                  scale: article.imageScale ?? 1.0,
                   fit: BoxFit.cover,
                 ),
               ),
@@ -297,7 +304,10 @@ class _HomeScreenState extends State<HomeScreen> {
     String content = article.content;
     List<String> lines = content.split('\n');
     String previewText = lines.take(1).join('\n');
-    
+
+    final listUrl = ApiService.getImageUrlWithVariant(article.imageUrl, 'list');
+    debugPrint('HOME list article id=${article.id} imageUrl=${article.imageUrl} list=$listUrl');
+
     return GestureDetector(
       onTap: () {
         try {
@@ -351,22 +361,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   bottomLeft: Radius.circular(18),
                 ),
                 child: article.imageUrl.isNotEmpty
-                    ? SimpleNetworkImage(
-                        imageUrl:
-                            ApiService.getImageUrlWithVariant(article.imageUrl, 'list'),
-                        fit: BoxFit.cover,
+                    ? TransformedImage(
+                        imageUrl: ApiService.getImageUrlWithVariant(article.imageUrl, 'list'),
                         width: double.infinity,
                         height: double.infinity,
-                        placeholder: Container(
-                          color: Colors.white.withOpacity(0.1),
-                          child: Icon(Icons.image_outlined,
-                              color: Colors.white.withOpacity(0.3), size: 28),
-                        ),
-                        errorWidget: Container(
-                          color: Colors.white.withOpacity(0.1),
-                          child: Icon(Icons.broken_image_outlined,
-                              color: Colors.white.withOpacity(0.3), size: 28),
-                        ),
+                        offsetX: article.imageOffsetX ?? 0.0,
+                        offsetY: article.imageOffsetY ?? 0.0,
+                        scale: article.imageScale ?? 1.0,
+                        fit: BoxFit.cover,
                       )
                     : Container(
                         color: Colors.white.withOpacity(0.1),

@@ -80,11 +80,15 @@ class ArticleProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> createArticle(String token, String title, String content, List<String> tags, String author, {String? previewImageUrl, double? textPositionX, double? textPositionY}) async {
+  Future<bool> createArticle(String token, String title, String content, List<String> tags, String author, 
+      {String? previewImageUrl, double? textPositionX, double? textPositionY, 
+       double? imageOffsetX, double? imageOffsetY, double? imageScale}) async {
     _isLoading = true;
     notifyListeners();
 
-    final newArticle = await ApiService.createArticle(token, title, content, tags, author, previewImageUrl: previewImageUrl, textPositionX: textPositionX, textPositionY: textPositionY);
+    final newArticle = await ApiService.createArticle(token, title, content, tags, author, 
+        previewImageUrl: previewImageUrl, textPositionX: textPositionX, textPositionY: textPositionY,
+        imageOffsetX: imageOffsetX, imageOffsetY: imageOffsetY, imageScale: imageScale);
 
     _isLoading = false;
     if (newArticle != null) {
@@ -120,7 +124,9 @@ class ArticleProvider with ChangeNotifier {
     }
   }
 
-  Future<void> updateArticle(String token, String articleId, String title, String content, List<String> tags, String author, String userId, {String? previewImageUrl, double? textPositionX, double? textPositionY}) async {
+  Future<void> updateArticle(String token, String articleId, String title, String content, List<String> tags, String author, String userId, 
+      {String? previewImageUrl, double? textPositionX, double? textPositionY, 
+       double? imageOffsetX, double? imageOffsetY, double? imageScale}) async {
     _isLoading = true;
     notifyListeners();
 
@@ -136,7 +142,10 @@ class ArticleProvider with ChangeNotifier {
         token, title, content, tags, author, 
         previewImageUrl: previewImageUrl, 
         textPositionX: textPositionX, 
-        textPositionY: textPositionY
+        textPositionY: textPositionY,
+        imageOffsetX: imageOffsetX, 
+        imageOffsetY: imageOffsetY, 
+        imageScale: imageScale
       );
 
       if (newArticle == null) {
