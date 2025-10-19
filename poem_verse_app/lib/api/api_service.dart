@@ -70,18 +70,25 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> fetchArticlesByAuthorCount({int limit = 10}) async {
+  static Future<Map<String, dynamic>> fetchArticlesByAuthorCount({int limit = 10, String? token}) async {
     try {
       final url = '${AppConfig.backendApiUrl}/articles/grouped/by-author-count?limit=$limit';
       
+      final headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'User-Agent': 'PoemVerse/1.0 (iOS)',
+        'Connection': 'keep-alive',
+      };
+      
+      // 如果有token，添加到请求头中
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+      
       final response = await http.get(
         Uri.parse(url),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'User-Agent': 'PoemVerse/1.0 (iOS)',
-          'Connection': 'keep-alive',
-        },
+        headers: headers,
       );
 
       if (response.statusCode == 200) {
@@ -94,14 +101,21 @@ class ApiService {
       try {
         final backupUrl = '${AppConfig.backupBackendBaseUrl}/api/articles/grouped/by-author-count?limit=$limit';
         
+        final headers = {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'PoemVerse/1.0 (iOS)',
+          'Connection': 'keep-alive',
+        };
+        
+        // 如果有token，添加到请求头中
+        if (token != null && token.isNotEmpty) {
+          headers['Authorization'] = 'Bearer $token';
+        }
+        
         final backupResponse = await http.get(
           Uri.parse(backupUrl),
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'User-Agent': 'PoemVerse/1.0 (iOS)',
-            'Connection': 'keep-alive',
-          },
+          headers: headers,
         );
 
         if (backupResponse.statusCode == 200) {
@@ -115,18 +129,25 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> fetchArticlesByAuthor(String author) async {
+  static Future<Map<String, dynamic>> fetchArticlesByAuthor(String author, {String? token}) async {
     try {
       final url = '${AppConfig.backendApiUrl}/articles/grouped/by-author/${Uri.encodeComponent(author)}';
       
+      final headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'User-Agent': 'PoemVerse/1.0 (iOS)',
+        'Connection': 'keep-alive',
+      };
+      
+      // 如果有token，添加到请求头中
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+      
       final response = await http.get(
         Uri.parse(url),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'User-Agent': 'PoemVerse/1.0 (iOS)',
-          'Connection': 'keep-alive',
-        },
+        headers: headers,
       );
 
       if (response.statusCode == 200) {
@@ -139,14 +160,21 @@ class ApiService {
       try {
         final backupUrl = '${AppConfig.backupBackendBaseUrl}/api/articles/grouped/by-author/${Uri.encodeComponent(author)}';
         
+        final headers = {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'PoemVerse/1.0 (iOS)',
+          'Connection': 'keep-alive',
+        };
+        
+        // 如果有token，添加到请求头中
+        if (token != null && token.isNotEmpty) {
+          headers['Authorization'] = 'Bearer $token';
+        }
+        
         final backupResponse = await http.get(
           Uri.parse(backupUrl),
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'User-Agent': 'PoemVerse/1.0 (iOS)',
-            'Connection': 'keep-alive',
-          },
+          headers: headers,
         );
 
         if (backupResponse.statusCode == 200) {

@@ -6,6 +6,7 @@ import 'package:poem_verse_app/api/api_service.dart';
 import 'package:poem_verse_app/models/article.dart';
 import 'package:provider/provider.dart';
 import 'package:poem_verse_app/providers/article_provider.dart';
+import 'package:poem_verse_app/providers/auth_provider.dart';
 import 'dart:ui';
 import 'package:flutter/services.dart';
 import 'package:poem_verse_app/screens/login_screen.dart';
@@ -25,12 +26,18 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
-    articleProvider.fetchArticles();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      
+      // 传递用户token以支持可见性过滤
+      articleProvider.fetchArticles(authProvider.token);
+    });
 
     _scrollController.addListener(() {
       if (_scrollController.position.pixels ==
           _scrollController.position.maxScrollExtent) {
+        final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
         articleProvider.fetchMoreArticles();
       }
     });
@@ -177,11 +184,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 initialArticle: article,
               ),
             ),
-          ).then((_) {
-            if (!mounted) return;
-            Provider.of<ArticleProvider>(context, listen: false)
-                .fetchArticles();
-          });
+                      ).then((_) {
+              if (!mounted) return;
+              final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
+              final authProvider = Provider.of<AuthProvider>(context, listen: false);
+              // 传递用户token以支持可见性过滤
+              articleProvider.fetchArticles(authProvider.token);
+            });
         } catch (e) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -316,11 +325,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 initialArticle: article,
               ),
             ),
-          ).then((_) {
-            if (!mounted) return;
-            Provider.of<ArticleProvider>(context, listen: false)
-                .fetchArticles();
-          });
+                      ).then((_) {
+              if (!mounted) return;
+              final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
+              final authProvider = Provider.of<AuthProvider>(context, listen: false);
+              // 传递用户token以支持可见性过滤
+              articleProvider.fetchArticles(authProvider.token);
+            });
         } catch (e) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(

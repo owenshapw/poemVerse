@@ -28,8 +28,8 @@ class ArticleProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final articlesData = await ApiService.fetchArticlesByAuthorCount(limit: 10);
-
+      // 传递token以支持可见性过滤
+      final articlesData = await ApiService.fetchArticlesByAuthorCount(limit: 10, token: token);
 
       final articlesList = articlesData['articles'] as List?;
       final newArticles = articlesList
@@ -43,8 +43,6 @@ class ArticleProvider with ChangeNotifier {
         _topArticle = null;
         _articles = [];
       }
-
-
 
     } catch (e) {
       _errorMessage = 'Failed to load articles. Please try again.';

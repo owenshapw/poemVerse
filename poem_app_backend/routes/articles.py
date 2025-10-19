@@ -36,11 +36,32 @@ def token_required(f):
         return f(*args, **kwargs)
     return decorated
 
+def get_current_user_id():
+    """
+    辅助函数：获取当前用户ID（如果有有效token的话）
+    返回用户ID或None（匿名用户）
+    """
+    current_user_id = None
+    
+    if 'Authorization' in request.headers:
+        auth_header = request.headers.get('Authorization')
+        if auth_header and isinstance(auth_header, str) and " " in auth_header:
+            try:
+                token = auth_header.split(" ")[1]
+                payload = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
+                current_user_id = payload['user_id']
+            except (jwt.ExpiredSignatureError, jwt.InvalidTokenError, IndexError):
+                # Token无效，作为匿名用户处理
+                current_user_id = None
+    
+    return current_user_id
+
 @articles_bp.route('/articles/home', methods=['GET'])
 def get_home_articles():
     """获取首页文章数据"""
     try:
-        recent_articles = supabase_client.get_recent_articles(limit=10)
+        current_user_id = get_current_user_id()
+        recent_articles = supabase_client.get_recent_articles(limit=10, current_user_id=current_user_id)
         return jsonify({'recent_articles': recent_articles}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -50,7 +71,12 @@ def get_articles_by_author_count():
     """获取按作者文章数量排序的文章列表"""
     try:
         limit = request.args.get('limit', 10, type=int)
-        articles = supabase_client.get_articles_by_author_count(limit=limit)
+        current_user_id = get_current_user_id()
+        
+        articles = supabase_client.get_articles_by_author_count(
+            limit=limit, 
+            current_user_id=current_user_id
+        )
         return jsonify({'articles': articles}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -59,7 +85,12 @@ def get_articles_by_author_count():
 def get_articles_by_author(author):
     """获取指定作者的所有文章"""
     try:
-        articles = supabase_client.get_articles_by_author(author)
+        current_user_id = get_current_user_id()
+        
+        articles = supabase_client.get_articles_by_author(
+            author, 
+            current_user_id=current_user_id
+        )
         return jsonify({'articles': articles}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -82,7 +113,13 @@ def get_articles():
     try:
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 10, type=int)
-        articles = supabase_client.get_all_articles(page=page, per_page=per_page)
+        current_user_id = get_current_user_id()
+        
+        articles = supabase_client.get_all_articles(
+            page=page, 
+            per_page=per_page, 
+            current_user_id=current_user_id
+        )
         return jsonify({'articles': articles}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
