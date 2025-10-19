@@ -482,6 +482,7 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
                               if (newPosition != null) {
                                 if (newPosition == 'published') {
                                   // 从预览页面发布成功，关闭当前页面
+                                  // 注意：预览页面现在会直接跳转到作品集，不会返回这个状态
                                   Navigator.of(context).pop(true);
                                 } else if (newPosition is Map) {
                                   // 返回文字位置更新
