@@ -80,33 +80,22 @@ class SupabaseClient:
         获取所有文章（支持分页）
         实现可见性过滤逻辑：
         - 匿名用户：只能看到公开文章
-        - 登录用户：能看到所有公开文章 + 自己的所有文章
+        - 登录用户：只能看到自己的所有文章
         """
         if self.supabase is None:
             raise RuntimeError("Supabase client not initialized. Call init_app() first.")
         
+        start_index = (page - 1) * per_page
+        end_index = start_index + per_page - 1
+        
         if current_user_id is None:
             # 匿名用户：只返回公开文章
-            start_index = (page - 1) * per_page
-            end_index = start_index + per_page - 1
             result = self.supabase.table('articles').select('*').eq('is_public_visible', True).order('created_at', desc=True).range(start_index, end_index).execute()
             return result.data
         else:
-            # 登录用户：需要复杂查询，先获取所有文章再过滤
-            result = self.supabase.table('articles').select('*').order('created_at', desc=True).execute()
-            all_articles = result.data
-            
-            # 过滤文章
-            filtered_articles = []
-            for article in all_articles:
-                # 公开文章或自己的文章
-                if article.get('is_public_visible', True) or article.get('user_id') == current_user_id:
-                    filtered_articles.append(article)
-            
-            # 手动分页
-            start_index = (page - 1) * per_page
-            end_index = start_index + per_page
-            return filtered_articles[start_index:end_index]
+            # 登录用户：只返回自己的所有文章
+            result = self.supabase.table('articles').select('*').eq('user_id', current_user_id).order('created_at', desc=True).range(start_index, end_index).execute()
+            return result.data
 
     def get_article_by_id(self, article_id: str):
         """根据ID获取文章"""
@@ -213,7 +202,7 @@ class SupabaseClient:
         获取最新的文章列表
         实现可见性过滤逻辑：
         - 匿名用户：只能看到公开文章
-        - 登录用户：能看到所有公开文章 + 自己的所有文章
+        - 登录用户：只能看到自己的所有文章
         """
         if self.supabase is None:
             raise RuntimeError("Supabase client not initialized. Call init_app() first.")
@@ -224,20 +213,10 @@ class SupabaseClient:
             result = query.order('created_at', desc=True).limit(limit).execute()
             return result.data
         else:
-            # 登录用户：需要复杂查询（公开文章 + 自己的私密文章）
-            # 获取所有文章，然后在应用层过滤
-            result = self.supabase.table('articles').select('*').order('created_at', desc=True).execute()
-            all_articles = result.data
-            
-            # 过滤文章
-            filtered_articles = []
-            for article in all_articles:
-                # 公开文章或自己的文章
-                if article.get('is_public_visible', True) or article.get('user_id') == current_user_id:
-                    filtered_articles.append(article)
-            
-            # 返回限制数量的结果
-            return filtered_articles[:limit]
+            # 登录用户：只返回自己的所有文章
+            query = self.supabase.table('articles').select('*').eq('user_id', current_user_id)
+            result = query.order('created_at', desc=True).limit(limit).execute()
+            return result.data
 
     def get_articles_by_author_count(self, limit=10, current_user_id=None):
         """
@@ -260,31 +239,26 @@ class SupabaseClient:
         备用方法：获取所有文章后按作者分组
         实现可见性过滤逻辑：
         - 匿名用户：只能看到公开文章
-        - 登录用户：能看到所有公开文章 + 自己的所有文章
+        - 登录用户：只能看到自己的所有文章
         """
         if self.supabase is None:
             raise RuntimeError("Supabase client not initialized. Call init_app() first.")
         
-        # 获取所有文章
-        result = self.supabase.table('articles').select('*').order('created_at', desc=True).execute()
-        all_articles = result.data
+        if current_user_id is None:
+            # 匿名用户：只获取公开文章
+            result = self.supabase.table('articles').select('*').eq('is_public_visible', True).order('created_at', desc=True).execute()
+            all_articles = result.data
+        else:
+            # 登录用户：只获取自己的文章
+            result = self.supabase.table('articles').select('*').eq('user_id', current_user_id).order('created_at', desc=True).execute()
+            all_articles = result.data
         
         if not all_articles:
             return []
         
-        # 根据用户身份过滤文章
-        filtered_articles = []
-        for article in all_articles:
-            # 公开文章：所有人都能看到
-            if article.get('is_public_visible', True):
-                filtered_articles.append(article)
-            # 私密文章：只有作者本人能看到
-            elif current_user_id and article.get('user_id') == current_user_id:
-                filtered_articles.append(article)
-        
         # 按作者分组并统计
         author_groups = {}
-        for article in filtered_articles:
+        for article in all_articles:
             author = article.get('author', '匿名')
             if author not in author_groups:
                 author_groups[author] = []
@@ -340,7 +314,7 @@ class SupabaseClient:
             return all_articles
         else:
             # 其他用户或匿名用户：只返回公开文章
-            return [article for article in all_articles if article.get('is_public_visible', True)]
+            return [article for article in all_articles if article.get('is_public_visible') is True]
 
     def delete_comment(self, comment_id):
         if self.supabase is None:

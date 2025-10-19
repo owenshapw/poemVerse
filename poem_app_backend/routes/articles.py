@@ -45,6 +45,7 @@ def get_current_user_id():
     
     if 'Authorization' in request.headers:
         auth_header = request.headers.get('Authorization')
+        
         if auth_header and isinstance(auth_header, str) and " " in auth_header:
             try:
                 token = auth_header.split(" ")[1]
