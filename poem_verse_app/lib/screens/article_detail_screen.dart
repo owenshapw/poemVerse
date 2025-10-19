@@ -11,6 +11,7 @@ import 'package:poem_verse_app/providers/auth_provider.dart';
 import 'package:poem_verse_app/providers/article_provider.dart';
 import 'package:poem_verse_app/screens/create_article_screen.dart';
 import 'package:screenshot/screenshot.dart';
+import 'package:flutter/services.dart';
 
 class ArticleDetailScreen extends StatefulWidget {
   final List<Article> articles;
@@ -32,6 +33,9 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
   bool _isDeleting = false;
   int _currentPage = 0;
   final ScreenshotController _screenshotController = ScreenshotController();
+  
+  // 可见性控制状态
+  bool _isUpdatingVisibility = false;
 
   @override
   void initState() {
@@ -195,6 +199,141 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
     }
   }
 
+  Widget _buildVisibilityToggle() {
+    // 使用与其他按钮相同的统一样式
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.2),
+          width: 0.5,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: _isUpdatingVisibility ? null : _toggleArticleVisibility,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_isUpdatingVisibility) ...[
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white.withOpacity(0.8)),
+                    ),
+                  ),
+                ] else ...[
+                  Icon(
+                    _article.isPublicVisible ? Icons.public : Icons.lock,
+                    color: Colors.white.withOpacity(0.9),
+                    size: 16,
+                  ),
+                ],
+                const SizedBox(width: 4),
+                Text(
+                  _article.isPublicVisible ? '公开' : '私密',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _toggleArticleVisibility() async {
+    if (_isUpdatingVisibility) return;
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final token = authProvider.token;
+    
+    if (token == null) {
+      _showErrorMessage('请先登录');
+      return;
+    }
+
+    final newVisibility = !_article.isPublicVisible;
+    
+    setState(() {
+      _isUpdatingVisibility = true;
+    });
+    
+    try {
+      // 显示加载状态
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('正在${newVisibility ? '公开' : '隐藏'}作品...'),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+
+      // 调用API更新可见性
+      final result = await ApiService.updateArticleVisibility(
+        token,
+        _article.id,
+        newVisibility,
+      );
+
+      if (result['success'] == true) {
+        // 更新本地状态
+        setState(() {
+          _article = Article(
+            id: _article.id,
+            title: _article.title,
+            author: _article.author,
+            content: _article.content,
+            imageUrl: _article.imageUrl,
+            userId: _article.userId,
+            imageOffsetX: _article.imageOffsetX,
+            imageOffsetY: _article.imageOffsetY,
+            imageScale: _article.imageScale,
+            textPositionX: _article.textPositionX,
+            textPositionY: _article.textPositionY,
+            isPublicVisible: newVisibility,
+          );
+          
+          // 同时更新articles列表中的对应文章
+          widget.articles[_currentPage] = _article;
+        });
+
+        // 显示成功提示
+        HapticFeedback.lightImpact();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('作品已${newVisibility ? '公开' : '隐藏'}'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } else {
+        throw Exception('服务器返回失败状态');
+      }
+    } catch (e) {
+      // 显示错误提示
+      _showErrorMessage('更新失败: ${e.toString().contains('Exception:') ? e.toString().split('Exception: ')[1] : e.toString()}');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUpdatingVisibility = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -287,20 +426,27 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
             children: [
               // 编辑按钮（仅作者可见）
               if (_isAuthor(context)) ...[
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, color: Colors.white, size: 22),
+                _buildActionButton(
+                  icon: Icons.edit_outlined,
                   tooltip: '编辑',
-                  onPressed: _isDeleting ? null : _editArticle,
+                  onPressed: (_isDeleting || _isUpdatingVisibility) ? null : _editArticle,
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 8),
+              ],
+              
+              // 可见性控制按钮（仅作者可见）
+              if (_isAuthor(context)) ...[
+                _buildVisibilityToggle(),
+                const SizedBox(width: 8),
               ],
               
               // 删除按钮（仅作者可见）
               if (_isAuthor(context)) ...[
-                IconButton(
-                  icon: Icon(Icons.delete_outline, color: Colors.red.shade300, size: 22),
+                _buildActionButton(
+                  icon: Icons.delete_outline,
                   tooltip: '删除',
-                  onPressed: _isDeleting ? null : _deleteArticle,
+                  onPressed: (_isDeleting || _isUpdatingVisibility) ? null : _deleteArticle,
+                  isDestructive: true,
                 ),
               ],
             ],
@@ -435,6 +581,51 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
               child: textContent,
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// 统一的操作按钮组件
+  Widget _buildActionButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback? onPressed,
+    bool isDestructive = false,
+    bool showLoadingIcon = false,
+    Color? iconColor,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.2),
+          width: 0.5,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onPressed,
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            child: showLoadingIcon
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white.withOpacity(0.8)),
+                    ),
+                  )
+                : Icon(
+                    icon,
+                    color: iconColor ?? Colors.white.withOpacity(0.9),
+                    size: 20,
+                  ),
+          ),
         ),
       ),
     );
