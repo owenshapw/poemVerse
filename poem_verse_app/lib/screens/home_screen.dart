@@ -165,8 +165,6 @@ class _HomeScreenState extends State<HomeScreen> {
     List<String> lines = content.split('\n');
     String previewText = lines.take(1).join('\n');
 
-    final topUrl = ApiService.getImageUrlWithVariant(article.imageUrl, 'headphoto');
-    debugPrint('HOME top article id=${article.id} imageUrl=${article.imageUrl} public=$topUrl');
 
     return GestureDetector(
       onTap: () {
@@ -306,8 +304,6 @@ class _HomeScreenState extends State<HomeScreen> {
     List<String> lines = content.split('\n');
     String previewText = lines.take(1).join('\n');
 
-    final listUrl = ApiService.getImageUrlWithVariant(article.imageUrl, 'list');
-    debugPrint('HOME list article id=${article.id} imageUrl=${article.imageUrl} list=$listUrl');
 
     return GestureDetector(
       onTap: () {
@@ -362,13 +358,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   bottomLeft: Radius.circular(18),
                 ),
                 child: article.imageUrl.isNotEmpty
-                    ? TransformedImage(
+                    ? InteractiveImagePreview(
                         imageUrl: ApiService.getImageUrlWithVariant(article.imageUrl, 'list'),
                         width: double.infinity,
                         height: double.infinity,
-                        offsetX: article.imageOffsetX ?? 0.0,
-                        offsetY: article.imageOffsetY ?? 0.0,
-                        scale: article.imageScale ?? 1.0,
+                        initialOffsetX: 0.0, // 列表预览不应用 offset
+                        initialOffsetY: 0.0, // 列表预览不应用 offset
+                        initialScale: 1.0, // 列表预览不应用 scale
+                        isInteractive: false,
                         fit: BoxFit.cover,
                       )
                     : Container(

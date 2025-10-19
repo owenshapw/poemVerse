@@ -158,7 +158,7 @@ class SupabaseClient:
                 import logging
                 logging.exception("update_article_fields error")
             except Exception:
-                print(f"update_article_fields error: {e}")
+                pass
             return None
 
     def create_comment(self, article_id: str, user_id: str, content: str):

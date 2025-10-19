@@ -21,7 +21,6 @@ def create_app():
     
     # 检查 Supabase 配置
     if not app.config.get('SUPABASE_URL') or not app.config.get('SUPABASE_KEY'):
-        print("❌ Supabase 配置缺失!")
         raise RuntimeError("Supabase 配置缺失")
     
     # 初始化Supabase客户端
@@ -32,7 +31,6 @@ def create_app():
             raise RuntimeError("Supabase 客户端初始化后仍为 None")
         
     except Exception as e:
-        print(f"❌ Supabase 初始化失败: {e}")
         raise RuntimeError(f"Supabase 初始化失败: {e}")
     
     # 启用CORS - 允许Flutter前端访问
@@ -70,7 +68,6 @@ def create_app():
 if __name__ == '__main__':
     try:
         app = create_app()
-        print("🚀 诗篇后端服务启动成功!")
         app.run(host='0.0.0.0', port=8080)
     except Exception as e:
-        print(f"❌ 服务启动失败: {e}") 
+        pass 

@@ -87,7 +87,7 @@ class AIImageGenerator:
                     import base64
                     return BytesIO(base64.b64decode(image_data))
         except Exception as e:
-            print(f"Stability AI Error: {e}")
+            pass
         return None
 
     def generate_with_huggingface(self, prompt, negative_prompt):
@@ -103,7 +103,7 @@ class AIImageGenerator:
             if response.status_code == 200:
                 return BytesIO(response.content)
         except Exception as e:
-            print(f"Hugging Face Error: {e}")
+            pass
         return None
 
     def _ensure_supabase_initialized(self):
@@ -156,7 +156,7 @@ class AIImageGenerator:
                 if public_url:
                     return self._format_image_url(public_url)
         except Exception as e:
-            print(f"Generate Poem Image Error: {e}")
+            pass
         return None
 
 ai_generator = AIImageGenerator()

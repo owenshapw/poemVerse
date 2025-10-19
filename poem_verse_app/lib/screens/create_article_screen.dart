@@ -2,16 +2,19 @@
 // ignore_for_file: use_build_context_synchronously, prefer_const_constructors, sized_box_for_whitespace
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:poem_verse_app/providers/auth_provider.dart';
+
 import 'package:poem_verse_app/config/app_config.dart';
 import 'package:poem_verse_app/models/article.dart';
 import 'package:poem_verse_app/widgets/interactive_image_preview.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:poem_verse_app/screens/article_preview_screen.dart';
+
 import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:http/http.dart' as http;
+
 import 'package:poem_verse_app/api/api_service.dart';
 
 class CreateArticleScreen extends StatefulWidget {
@@ -26,9 +29,12 @@ class CreateArticleScreen extends StatefulWidget {
 class CreateArticleScreenState extends State<CreateArticleScreen> {
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
+  final _titleFocusNode = FocusNode();
+  final _contentFocusNode = FocusNode();
 
   String? _previewImageUrl;
-  bool _isCreating = false;
+
+  bool _isUploadingImage = false; // 添加上传状态追踪
   double _textPositionX = 15.0; // Default to a centered position
   double _textPositionY = 200.0;
   
@@ -86,130 +92,20 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
   void dispose() {
     _titleController.dispose();
     _contentController.dispose();
-
+    _titleFocusNode.dispose();
+    _contentFocusNode.dispose();
     super.dispose();
   }
 
-  Future<void> _saveArticle() async {
-  if (_isCreating) return;
-  setState(() { _isCreating = true; });
-
-  try {
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    final token = auth.token ?? '';
-
-    debugPrint('DEBUG article id=${widget.article?.id}');
-    debugPrint('DEBUG token=${token.isEmpty ? "EMPTY" : (token.length>16 ? token.replaceRange(8, token.length-8, "...") : token)}');
-
-    if (token.isEmpty || token.contains('<') || token.contains('>')) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('登录信息无效，请重新登录')));
-      }
-      setState(() { _isCreating = false; });
-      return;
-    }
-
-    // 验证 article id（编辑模式）
-    final articleId = widget.article?.id ?? '';
-    if (widget.isEdit == true && articleId.isEmpty) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('编辑数据异常，将以新建方式保存')));
-      // 这里选择直接返回或走 create 路径，这里示例选择返回并重置状态
-      setState(() { _isCreating = false; });
-      return;
-    }
-
-    // 合并：优先使用 preview_ 的临时值，否则使用现有 widget.article 中保存的值，最后备选默认
-    final previewUrl = _previewImageUrl ?? widget.article?.imageUrl ?? '';
-    final finalImageOffsetX = _previewOffsetX ?? _imageOffsetX;
-    final finalImageOffsetY = _previewOffsetY ?? _imageOffsetY;
-    final finalImageScale = _previewScale ?? _imageScale;
-    
-    // 调试信息：打印实际要保存的偏移量数据
-    debugPrint('=== 保存图片偏移量数据 ===');
-    debugPrint('_previewOffsetX: $_previewOffsetX');
-    debugPrint('_previewOffsetY: $_previewOffsetY');
-    debugPrint('_imageOffsetX: $_imageOffsetX');
-    debugPrint('_imageOffsetY: $_imageOffsetY');
-    debugPrint('finalImageOffsetX: $finalImageOffsetX');
-    debugPrint('finalImageOffsetY: $finalImageOffsetY');
-    debugPrint('finalImageScale: $finalImageScale');
-    debugPrint('========================');
-
-    final body = {
-      'title': _titleController.text,
-      'content': _contentController.text,
-      'author': widget.article?.author ?? auth.userId ?? '',
-      'preview_image_url': previewUrl,
-      'image_offset_x': finalImageOffsetX,
-      'image_offset_y': finalImageOffsetY,
-      'image_scale': finalImageScale,
-      // 如果后端需要 text position，也一并传（可选）
-      'text_position_x': _textPositionX,
-      'text_position_y': _textPositionY,
-    };
-    
-    debugPrint('保存的body数据: $body');
-
-    // 防御性检查：articleId 不能是一个 URL（避免误把图片 URL 当 id）
-    if (widget.isEdit == true) {
-      if (articleId.startsWith('http')) {
-        debugPrint('Refusing to update article: article.id looks like a URL -> $articleId');
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('文章 id 异常，无法更新，请重试或重新打开编辑界面')));
-        setState(() { _isCreating = false; });
-        return;
-      }
-    }
-
-    debugPrint('发送到服务器的数据: $body');
-    
-    http.Response resp;
-    if (widget.isEdit == true && articleId.isNotEmpty) {
-      // 编辑模式
-      debugPrint('使用编辑模式，articleId=$articleId');
-      resp = await ApiService.updateArticleWithBody(articleId, body, token: token);
-    } else {
-      // 创建模式
-      debugPrint('使用创建模式');
-      resp = await ApiService.createArticleWithBody(body, token: token);
-    }
-    
-    debugPrint('API调用结果 status=${resp.statusCode} body=${resp.body}');
-
-    if (resp.statusCode == 200 || resp.statusCode == 204 || resp.statusCode == 201) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('保存成功')));
-        
-        // 强制清除图片缓存
-        try {
-          PaintingBinding.instance.imageCache.clear();
-          PaintingBinding.instance.imageCache.clearLiveImages();
-          debugPrint('图片缓存已清理');
-        } catch (e) {
-          debugPrint('清理图片缓存失败: $e');
-        }
-        
-        // 发布成功后的导航处理
-        if (widget.isEdit) {
-          // 编辑模式：返回true通知上级页面刷新
-          Navigator.of(context).pop(true);
-        } else {
-          // 创建模式：返回true，让调用者决定导航
-          Navigator.of(context).pop(true);
-        }
-      }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('保存失败：${resp.statusCode}')));
-      }
-    }
-
-  } catch (e) {
-    debugPrint('Save article error: $e');
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('保存出错')));
-  } finally {
-    if (mounted) setState(() { _isCreating = false; });
+  // 保存本地图片偏移数据（不发布到服务器）
+  void _saveLocalImageData() {
+    // 更新本地图片偏移数据
+    _imageOffsetX = _previewOffsetX ?? _imageOffsetX;
+    _imageOffsetY = _previewOffsetY ?? _imageOffsetY;
+    _imageScale = _previewScale ?? _imageScale;
   }
-}
+
+  
 
   Future<void> _pickAndUploadImage() async {
     final picker = ImagePicker();
@@ -219,11 +115,19 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
     // 检查widget是否仍然有效
     if (!mounted) return;
     
+    // 开始上传状态
+    setState(() {
+      _isUploadingImage = true;
+    });
+    
     final file = File(pickedFile.path);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final token = authProvider.token;
     if (token == null) {
       if (mounted) {
+        setState(() {
+          _isUploadingImage = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('请先登录')),
         );
@@ -269,6 +173,7 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
             setState(() {
               // 使用后端可访问的 public 变体作为预览 URL
               _previewImageUrl = ApiService.getImageUrlWithVariant(url.toString(), 'public');
+              _isUploadingImage = false; // 上传成功，停止动画
             });
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('图片上传成功！')),
@@ -279,6 +184,9 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
       }
       
       // 上传失败
+      setState(() {
+        _isUploadingImage = false; // 上传失败，停止动画
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('图片上传失败：服务器响应异常')),
       );
@@ -306,11 +214,81 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
               errorMessage = '网络错误，请重试';
           }
         }
+        setState(() {
+          _isUploadingImage = false; // 上传出错，停止动画
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(errorMessage)),
         );
       }
     }
+  }
+
+  // 构建图片预览区域
+  Widget _buildImagePreviewArea() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('图片预览（上下拖动调整图片位置）:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+        SizedBox(height: 16),
+        Container(
+          width: double.infinity,
+          height: 180,
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[300]!, width: 1),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(11),
+            child: _buildImageContent(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 构建图片内容
+  Widget _buildImageContent() {
+    if (_previewImageUrl != null && _previewImageUrl!.isNotEmpty) {
+      // 显示上传的图片
+      return _buildInteractivePreview();
+    } else {
+      // 显示浅灰色占位
+      return _buildEmptyPreview();
+    }
+  }
+
+
+
+  // 交互式图片预览
+  Widget _buildInteractivePreview() {
+    return InteractiveImagePreview(
+      imageUrl: ApiService.getImageUrlWithVariant(_previewImageUrl ?? '', 'public'),
+      width: double.infinity,
+      height: 180,
+      initialOffsetX: _previewOffsetX ?? _imageOffsetX,
+      initialOffsetY: _previewOffsetY ?? _imageOffsetY,
+      initialScale: _previewScale ?? _imageScale,
+      onTransformChanged: (ox, oy, s) {
+        _previewOffsetX = ox;
+        _previewOffsetY = oy;
+        _previewScale = s;
+        
+        _imageOffsetX = ox;
+        _imageOffsetY = oy;
+        _imageScale = s;
+      },
+      isInteractive: true,
+      fit: BoxFit.cover,
+    );
+  }
+
+  // 空状态预览 - 纯净的浅色占位符
+  Widget _buildEmptyPreview() {
+    return Container(
+      color: Color(0xFFFAFAFA), // 非常浅的灰色占位符
+    );
   }
 
   @override
@@ -320,19 +298,38 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
       appBar: AppBar(
         title: Text(widget.isEdit ? '编辑诗篇' : '发布诗篇'),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: NeverScrollableScrollPhysics(), // 临时用于调试
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
+      body: GestureDetector(
+        // 点击空白区域收回键盘
+        onTap: () {
+          FocusScope.of(context).unfocus();
+        },
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.only(
+              left: 16.0,
+              right: 16.0,
+              top: 16.0,
+              bottom: 16.0,
+            ),
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // 标题输入
                 TextField(
                   controller: _titleController,
-                  decoration: InputDecoration(labelText: '标题', border: OutlineInputBorder()),
+                  focusNode: _titleFocusNode,
+                  decoration: InputDecoration(
+                    labelText: '标题', 
+                    border: OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: Icon(Icons.clear, size: 20),
+                      onPressed: () {
+                        _titleController.clear();
+                        FocusScope.of(context).unfocus(); // 清除后收回键盘
+                      },
+                    ),
+                  ),
+                  textInputAction: TextInputAction.next, // 键盘显示“下一项”
                   contextMenuBuilder: (context, editableTextState) {
                     return AdaptiveTextSelectionToolbar.buttonItems(
                       anchors: editableTextState.contextMenuAnchors,
@@ -346,6 +343,14 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
                             return ContextMenuButtonItem(onPressed: item.onPressed, label: '粘贴');
                           case 'Select all':
                             return ContextMenuButtonItem(onPressed: item.onPressed, label: '全选');
+                          case 'Select All':
+                            return ContextMenuButtonItem(onPressed: item.onPressed, label: '全选');
+                          case 'Look Up':
+                            return ContextMenuButtonItem(onPressed: item.onPressed, label: '查询');
+                          case 'Search Web':
+                            return ContextMenuButtonItem(onPressed: item.onPressed, label: '网页搜索');
+                          case 'Share':
+                            return ContextMenuButtonItem(onPressed: item.onPressed, label: '分享');
                           default:
                             return item;
                         }
@@ -354,19 +359,62 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
                   },
                 ),
                 SizedBox(height: 16),
-                // 内容输入
+                // 内容输入 - 使用固定高度但可滚动
                 Container(
-                  height: 200,
+                  height: 200, // 减少高度防止溢出
                   child: TextField(
                     controller: _contentController,
+                    focusNode: _contentFocusNode,
                     decoration: InputDecoration(
                       labelText: '内容',
                       border: OutlineInputBorder(),
                       alignLabelWithHint: true,
+                      suffixIcon: Padding(
+                        padding: EdgeInsets.only(top: 8, right: 8),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: Icon(Icons.clear, size: 20),
+                              onPressed: () {
+                                _contentController.clear();
+                                FocusScope.of(context).unfocus();
+                              },
+                            ),
+                            GestureDetector(
+                              onTap: () async {
+                                // 直接取消所有焦点
+                                _titleFocusNode.unfocus();
+                                _contentFocusNode.unfocus();
+                                FocusScope.of(context).unfocus();
+                                FocusManager.instance.primaryFocus?.unfocus();
+                                
+                                // 使用系统方法隐藏键盘
+                                try {
+                                  SystemChannels.textInput.invokeMethod('TextInput.hide');
+                                } catch (e) {
+                                  // 静默处理失败
+                                }
+                                
+                                // 延迟后再次确保
+                                await Future.delayed(Duration(milliseconds: 50));
+                                if (mounted) {
+                                  FocusScope.of(context).requestFocus(FocusNode());
+                                }
+                              },
+                              child: Container(
+                                padding: EdgeInsets.all(8),
+                                child: Icon(Icons.keyboard_hide, size: 20),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                     maxLines: null,
                     expands: true,
                     textAlignVertical: TextAlignVertical.top,
+                    textInputAction: TextInputAction.newline, // 键盘显示“换行”
                     contextMenuBuilder: (context, editableTextState) {
                       return AdaptiveTextSelectionToolbar.buttonItems(
                         anchors: editableTextState.contextMenuAnchors,
@@ -380,6 +428,14 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
                               return ContextMenuButtonItem(onPressed: item.onPressed, label: '粘贴');
                             case 'Select all':
                               return ContextMenuButtonItem(onPressed: item.onPressed, label: '全选');
+                            case 'Select All':
+                              return ContextMenuButtonItem(onPressed: item.onPressed, label: '全选');
+                            case 'Look Up':
+                              return ContextMenuButtonItem(onPressed: item.onPressed, label: '查询');
+                            case 'Search Web':
+                              return ContextMenuButtonItem(onPressed: item.onPressed, label: '网页搜索');
+                            case 'Share':
+                              return ContextMenuButtonItem(onPressed: item.onPressed, label: '分享');
                             default:
                               return item;
                           }
@@ -388,157 +444,132 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
                     },
                   ),
                 ),
-                SizedBox(height: 16),
+                SizedBox(height: 24),
 
-                // 预览图片区域
+                // 图片预览区域 - 始终显示
+                _buildImagePreviewArea(),
+                SizedBox(height: 20),
+
+                // 如果有图片则显示功能按钮
                 if (_previewImageUrl != null && _previewImageUrl!.isNotEmpty) ...[
                   Row(
                     children: [
-                      Text('图片预览:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      Spacer(),
-                      GestureDetector(
-                        onTap: () {
-                          showDialog(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: Text('图片调整帮助'),
-                              content: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('• 双指缩放：使用两个手指来放大或缩小图片'),
-                                  SizedBox(height: 8),
-                                  Text('• 单指移动：使用一个手指来移动图片位置'),
-                                  SizedBox(height: 8),
-                                  Text('• 重置图片：点击“重置图片”按钮恢复原始尺寸和位置'),
-                                ],
-                              ),
-                              actions: [
-                                TextButton(onPressed: () => Navigator.of(context).pop(), child: Text('知道了')),
-                              ],
-                            ),
-                          );
-                        },
-                        child: Row(
-                          children: [
-                            Icon(Icons.help_outline, size: 16, color: Colors.grey[600]),
-                            SizedBox(width: 4),
-                            Text('上下拖动调整图片位置（发布后保持此位置）', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 12),
-                  // Preview area — set height to match myArticles card image height (200)
-                  SizedBox(
-                    width: double.infinity,
-                    height: 200, // match card height
-                    child: InteractiveImagePreview(
-                      // 使用 public 变体
-                      imageUrl: ApiService.getImageUrlWithVariant(_previewImageUrl ?? '', 'public'),
-                      width: double.infinity,
-                      height: 200, // ensure preview uses same height
-                      initialOffsetX: _previewOffsetX ?? _imageOffsetX,
-                      initialOffsetY: _previewOffsetY ?? _imageOffsetY,
-                      initialScale: _previewScale ?? _imageScale,
-                      onTransformChanged: (ox, oy, s) {
-                        debugPrint('图片位置变化: offsetX=$ox, offsetY=$oy, scale=$s');
-                        _previewOffsetX = ox;
-                        _previewOffsetY = oy;
-                        _previewScale = s;
-                        
-                        // 实时更新主值，保证下次打开时位置正确
-                        _imageOffsetX = ox;
-                        _imageOffsetY = oy;
-                        _imageScale = s;
-                      },
-                      isInteractive: true,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  Row(
-                    children: [
+                      // 文字布局按钮 - 先保存数据再跳转
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () async {
-                            final newPosition = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ArticlePreviewScreen(
-                                  title: _titleController.text,
-                                  content: _contentController.text,
-                                  author: Provider.of<AuthProvider>(context, listen: false).username ?? '佚名',
-                                  imageUrl: _previewImageUrl,
-                                  initialTextPositionX: _textPositionX,
-                                  initialTextPositionY: _textPositionY,
+                            // 保存本地图片偏移数据并跳转预览页面
+                            _saveLocalImageData();
+                            if (mounted) {
+                              final newPosition = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ArticlePreviewScreen(
+                                    title: _titleController.text,
+                                    content: _contentController.text,
+                                    author: Provider.of<AuthProvider>(context, listen: false).username ?? '佚名',
+                                    imageUrl: _previewImageUrl,
+                                    initialTextPositionX: _textPositionX,
+                                    initialTextPositionY: _textPositionY,
+                                    articleId: widget.isEdit ? widget.article?.id : null,
+                                    isEdit: widget.isEdit,
+                                    imageOffsetX: _previewOffsetX ?? _imageOffsetX,
+                                    imageOffsetY: _previewOffsetY ?? _imageOffsetY,
+                                    imageScale: _previewScale ?? _imageScale,
+                                  ),
                                 ),
-                              ),
-                            );
-                            if (newPosition != null) {
-                              setState(() {
-                                _textPositionX = (newPosition['x'] as num?)?.toDouble() ?? 15.0;
-                                _textPositionY = (newPosition['y'] as num?)?.toDouble() ?? 200.0;
-                              });
+                              );
+                              if (newPosition != null) {
+                                if (newPosition == 'published') {
+                                  // 从预览页面发布成功，关闭当前页面
+                                  Navigator.of(context).pop(true);
+                                } else if (newPosition is Map) {
+                                  // 返回文字位置更新
+                                  setState(() {
+                                    _textPositionX = (newPosition['x'] as num?)?.toDouble() ?? 15.0;
+                                    _textPositionY = (newPosition['y'] as num?)?.toDouble() ?? 200.0;
+                                  });
+                                }
+                              }
                             }
                           },
                           icon: Icon(Icons.tune, size: 18),
-                          label: Text('调整文字'),
+                          label: Text(
+                            '文字布局',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)
+                          ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.deepPurple,
+                            side: BorderSide(color: Colors.deepPurple, width: 1.5),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                         ),
                       ),
                       SizedBox(width: 16),
+                      // 重新上传按钮
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: _pickAndUploadImage,
-                          icon: Icon(Icons.refresh, size: 18),
-                          label: Text('重新上传'),
-                          style: OutlinedButton.styleFrom(foregroundColor: Colors.deepPurple),
+                          onPressed: _isUploadingImage ? null : _pickAndUploadImage,
+                          icon: _isUploadingImage 
+                              ? SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.deepPurple),
+                                  ),
+                                )
+                              : Icon(Icons.refresh, size: 18),
+                          label: Text(
+                            _isUploadingImage ? '上传中...' : '重新上传',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: _isUploadingImage ? Colors.grey : Colors.deepPurple,
+                            side: BorderSide(
+                              color: _isUploadingImage ? Colors.grey : Colors.deepPurple, 
+                              width: 1.5
+                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  SizedBox(height: 20),
-                ],
-
-                // 底部按钮区域
-                if (_previewImageUrl == null || _previewImageUrl!.isEmpty) ...[
+                ] else ...[
+                  // 如果没有图片，显示上传按钮
                   SizedBox(
                     width: double.infinity,
                     height: 48,
                     child: OutlinedButton.icon(
-                      onPressed: _pickAndUploadImage,
-                      icon: Icon(Icons.image_outlined, size: 20),
-                      label: Text('上传配图', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                      onPressed: _isUploadingImage ? null : _pickAndUploadImage,
+                      icon: _isUploadingImage 
+                          ? SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.deepPurple),
+                              ),
+                            )
+                          : Icon(Icons.image_outlined, size: 20),
+                      label: Text(
+                        _isUploadingImage ? '正在上传...' : '上传配图',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)
+                      ),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.deepPurple,
-                        side: BorderSide(color: Colors.deepPurple, width: 1.5),
+                        foregroundColor: _isUploadingImage ? Colors.grey : Colors.deepPurple,
+                        side: BorderSide(
+                          color: _isUploadingImage ? Colors.grey : Colors.deepPurple, 
+                          width: 1.5
+                        ),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
                   ),
-                  SizedBox(height: 12),
                 ],
 
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton.icon(
-                    onPressed: _isCreating ? null : _saveArticle,
-                    icon: _isCreating ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Icon(Icons.send_rounded, size: 20),
-                    label: Text(_isCreating ? '发布中...' : '发布诗篇', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepPurple,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                ),
-
-                SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
+                SizedBox(height: 32),
               ],
             ),
           ),

@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter/foundation.dart'; // added for debugPrint
+
 import 'package:poem_verse_app/config/app_config.dart';
 import 'package:poem_verse_app/models/article.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,7 +13,7 @@ class ApiService {
       final url = dotenv.env['BACKEND_API_URL'];
       if (url != null && url.isNotEmpty) return url;
     } catch (e) {
-      debugPrint('dotenv not initialized, falling back to AppConfig.backendApiUrl');
+      // dotenv 未初始化时使用默认配置
     }
     return AppConfig.backendApiUrl;
   }
@@ -35,7 +35,7 @@ class ApiService {
 
 
       if (response.statusCode == 200) {
-        debugPrint('API fetchHomeArticles body=${response.body}');
+
         return json.decode(response.body);
       } else if (response.statusCode == 418) {
         throw Exception('418 error, trying backup URL');
@@ -183,7 +183,7 @@ class ApiService {
           'Authorization': 'Bearer $token',
         },
       );
-      debugPrint('ApiService.getMyArticles status=${response.statusCode} body=${response.body}');
+
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
@@ -327,9 +327,7 @@ class ApiService {
     final url = normalized.endsWith('/api') ? '$normalized/articles' : '$normalized/api/articles';
     final headers = _buildHeaders(token: token);
 
-    debugPrint('ApiService.createArticleWithBody -> URL: $url');
-    debugPrint('ApiService.createArticleWithBody -> Headers: $headers');
-    debugPrint('ApiService.createArticleWithBody -> Body keys: ${body.keys}');
+
 
     return await http.post(Uri.parse(url), headers: headers, body: jsonEncode(body));
   }
@@ -395,7 +393,7 @@ class ApiService {
   if (uri == null) return maybeSrc;
 
   if (variant.trim().isEmpty) {
-    debugPrint('ApiService.getImageUrlWithVariant src=$src variant=<none> out=${uri.toString()}');
+
     return uri.toString();
   }
 
@@ -408,7 +406,7 @@ class ApiService {
   }
 
   final outUri = uri.replace(pathSegments: segments);
-  debugPrint('ApiService.getImageUrlWithVariant src=$src variant=$variant out=${outUri.toString()}');
+
   return outUri.toString();
 }
 
@@ -582,12 +580,10 @@ class ApiService {
       final v = maskedHeaders['Authorization']!;
       if (v.length > 20) maskedHeaders['Authorization'] = v.replaceRange(10, v.length-6, '...'); 
     }
-    debugPrint('ApiService.updateArticleWithBody -> URL: $url');
-    debugPrint('ApiService.updateArticleWithBody -> Headers: $maskedHeaders');
-    debugPrint('ApiService.updateArticleWithBody -> Body: $body');
+
 
     final resp = await http.put(Uri.parse(url), headers: headers, body: jsonEncode(body));
-    debugPrint('PUT Status=${resp.statusCode} body=${resp.body}');
+
     return resp;
   }
 }

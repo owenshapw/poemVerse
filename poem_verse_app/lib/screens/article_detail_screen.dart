@@ -2,27 +2,31 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'dart:ui';
 import 'package:poem_verse_app/models/article.dart';
+import 'package:poem_verse_app/widgets/simple_network_image.dart';
+import 'package:poem_verse_app/api/api_service.dart';
+import 'package:provider/provider.dart';
 import 'package:poem_verse_app/providers/auth_provider.dart';
 import 'package:poem_verse_app/providers/article_provider.dart';
-import 'package:poem_verse_app/api/api_service.dart';
 import 'package:poem_verse_app/screens/create_article_screen.dart';
-import 'package:poem_verse_app/screens/author_works_screen.dart';
 import 'package:screenshot/screenshot.dart';
-import 'package:poem_verse_app/widgets/interactive_image_preview.dart';
 
 class ArticleDetailScreen extends StatefulWidget {
   final List<Article> articles;
   final int initialIndex;
 
-  const ArticleDetailScreen({super.key, required this.articles, required this.initialIndex});
+  const ArticleDetailScreen({
+    super.key,
+    required this.articles,
+    required this.initialIndex,
+  });
 
   @override
-  State<ArticleDetailScreen> createState() => _ArticleDetailScreenState();
+  ArticleDetailScreenState createState() => ArticleDetailScreenState();
 }
 
-class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
+class ArticleDetailScreenState extends State<ArticleDetailScreen> {
   late PageController _pageController;
   late Article _article;
   bool _isDeleting = false;
@@ -32,7 +36,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: widget.initialIndex, viewportFraction: 0.95);
+    _pageController = PageController(initialPage: widget.initialIndex);
     _article = widget.articles[widget.initialIndex];
     _currentPage = widget.initialIndex;
   }
@@ -78,7 +82,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       if (mounted) {
         _hideLoadingDialog();
         _showSuccessMessage('诗篇删除成功');
-        Navigator.of(context).pop();
+        Navigator.of(context).pop('deleted'); // 返回删除标记
       }
     } catch (e) {
       if (mounted) {
@@ -153,8 +157,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     );
   }
 
-  
-
   Future<void> _editArticle() async {
     final updated = await Navigator.push(
       context,
@@ -172,7 +174,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
         // 清理图片缓存
         PaintingBinding.instance.imageCache.clear();
         PaintingBinding.instance.imageCache.clearLiveImages();
-        debugPrint('图片缓存已清理');
+
         
         final updatedArticle = await ApiService.getArticleDetail(_article.id);
         if (mounted) {
@@ -181,10 +183,10 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
             // 更新articles列表中的对应文章
             widget.articles[_currentPage] = updatedArticle;
           });
-          debugPrint('文章编辑后刷新成功: imageOffsetY=${updatedArticle.imageOffsetY}');
+
         }
       } catch (e) {
-        debugPrint('刷新文章数据失败: $e');
+
         // 如果刷新失败，仍然返回上一级
         if (mounted) {
           Navigator.of(context).pop();
@@ -193,246 +195,248 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     }
   }
 
-  
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F6FF),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // 顶部栏 - 简洁设计
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  // 返回按钮
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.black54, size: 24),
-                    onPressed: () => Navigator.of(context).pop(),
-                    tooltip: '返回',
-                  ),
-                  
-                  // 作者名称
-                  Expanded(
-                    child: Text(
-                      _article.author,
-                      style: const TextStyle(
-                        color: Colors.black87,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  
-                  // 右侧按钮组
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // 作者权限按钮：编辑
-                      if (_isAuthor(context)) ...[
-                        IconButton(
-                          icon: const Icon(Icons.edit_outlined, color: Colors.black54, size: 20),
-                          tooltip: '编辑',
-                          onPressed: _isDeleting ? null : _editArticle,
-                        ),
-                      ],
-                      
-                      // 星星按钮（作品集）
-                      IconButton(
-                        icon: const Icon(Icons.auto_awesome, color: Colors.black54, size: 20),
-                        tooltip: '作品集',
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => AuthorWorksScreen(
-                                author: _article.author,
-                                initialArticle: _article,
-                              ),
-                        ),
-                          );
-                        },
-                      ),
-                      
-                      // 作者权限按钮：删除
-                      if (_isAuthor(context)) ...[
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
-                          tooltip: '删除',
-                          onPressed: _isDeleting ? null : _deleteArticle,
-                        ),
-                      ],
-                    ],
-                  ),
+      backgroundColor: const Color(0xFF232946),
+      body: Stack(
+        children: [
+          // Background
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF667eea),
+                  Color(0xFF764ba2),
                 ],
               ),
             ),
-            
-            // 内容区 - 采用author_magazine_screen样式
-            Expanded(
-              child: Container(
-                // 为阴影提供额外的裁剪空间
-                clipBehavior: Clip.none,
-                child: Center(
-                  child: PageView.builder(
-                    controller: _pageController,
-                    itemCount: widget.articles.length,
-                    physics: const BouncingScrollPhysics(),
-                    onPageChanged: (index) {
-                      setState(() {
-                        _currentPage = index;
-                        _article = widget.articles[index];
-                      });
-                    },
-                    itemBuilder: (context, index) {
-                      final article = widget.articles[index];
-                      return Container(
-                      // 防止阴影被父容器裁剪
-                      clipBehavior: Clip.none,
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          return AnimatedBuilder(
-                            animation: _pageController,
-                            builder: (context, child) {
-                              double scale = 1.0;
-                              double opacity = 1.0;
-                              
-                              if (_pageController.position.haveDimensions) {
-                                double page = _pageController.page ?? index.toDouble();
-                                double distance = (page - index).abs();
-                                
-                                // 缩放计算：当前页面为1.0，相邻页面为0.8，更远的为0.7
-                                if (distance <= 1.0) {
-                                  scale = 1.0 - (distance * 0.2); // 范围 0.8-1.0
-                                } else {
-                                  scale = 0.7; // 更远的页面
-                                }
-                                
-                                // 透明度计算
-                                opacity = (1.0 - distance.clamp(0.0, 1.0) * 0.3).clamp(0.7, 1.0);
-                              }
-                              
-                              final cardWidget = Center(
-                                child: Transform.scale(
-                                  scale: scale,
-                                  child: Container(
-                                    margin: const EdgeInsets.fromLTRB(8, 24, 8, 15), // 底部margin减尊10px，让卡片高度向下延伸10px
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(20),
-                                      color: Colors.white.withOpacity(opacity),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.15 * scale * opacity),
-                                          blurRadius: 20 * scale,
-                                          spreadRadius: 3 * scale,
-                                          offset: Offset(0, 10 * scale),
-                                        ),
-                                      ],
-                                    ),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(20),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          AspectRatio(
-                                            aspectRatio: 4 / 2.8,
-                                            child: article.imageUrl.isNotEmpty
-                                                ? ColorFiltered(
-                                                    colorFilter: ColorFilter.mode(
-                                                      Colors.white.withOpacity(1.0 - opacity),
-                                                      BlendMode.srcATop,
-                                                    ),
-                                                    child: InteractiveImagePreview(
-                                                      imageUrl: ApiService.getImageUrlWithVariant(article.imageUrl, 'public'),
-                                                      width: double.infinity,
-                                                      height: double.infinity,
-                                                      initialOffsetX: 0.0, // X轴偏移为0（禁用水平移动）
-                                                      initialOffsetY: article.imageOffsetY ?? 0.0, // 继承创建页面调整的Y轴偏移
-                                                      initialScale: 1.0, // 缩放为1（禁用缩放）
-                                                      isInteractive: false, // 禁用交互，只显示不允许调整
-                                                      fit: BoxFit.cover,
-                                                    ),
-                                                  )
-                                                : Container(color: Colors.grey[200]!.withOpacity(opacity)),
-                                          ),
-                                          Expanded(
-                                            child: Column(
-                                              children: [
-                                                // 文本区域，限制高度
-                                                Expanded(
-                                                  child: Container(
-                                                    margin: const EdgeInsets.only(bottom: 20), // 文本框距离卡片底部20px
-                                                    child: SingleChildScrollView(
-                                                      child: Padding(
-                                                        padding: const EdgeInsets.fromLTRB(24, 20, 24, 0), // 底部不需要padding，由margin控制
-                                                        child: Column(
-                                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                                          children: [
-                                                            Text(
-                                                              article.title,
-                                                              style: TextStyle(
-                                                                fontSize: 24,
-                                                                fontWeight: FontWeight.bold,
-                                                                color: Colors.black.withOpacity(opacity),
-                                                              ),
-                                                            ),
-                                                            const SizedBox(height: 10),
-                                                            Text(
-                                                              article.author,
-                                                              style: TextStyle(
-                                                                fontSize: 15,
-                                                                color: Colors.black54.withOpacity(opacity),
-                                                              ),
-                                                            ),
-                                                            const SizedBox(height: 18),
-                                                            Text(
-                                                              article.content,
-                                                              style: TextStyle(
-                                                                fontSize: 16,
-                                                                color: Colors.black87.withOpacity(opacity),
-                                                                height: 1.6,
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                              
-                              // 只对当前页面应用Screenshot包装
-                              if (index == _currentPage) {
-                                return Screenshot(
-                                  controller: _screenshotController,
-                                  child: cardWidget,
-                                );
-                              } else {
-                                return cardWidget;
-                              }
-                            },
-                          );
-                        },
+          ),
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+            child: Container(
+              color: Colors.white.withOpacity(0.05),
+            ),
+          ),
+          // Content
+          SafeArea(
+            child: Column(
+              children: [
+                _buildTopBar(),
+                Expanded(
+                  child: _buildArticleContent(),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          // 返回按钮
+          IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          
+          // 作者名称和页面计数
+          Expanded(
+            child: Row(
+              children: [
+                Text(
+                  _article.author,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (widget.articles.isNotEmpty) ...[
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${_currentPage + 1}/${widget.articles.length}',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
                       ),
-                      );
-                    },
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          
+          // 右侧编辑和删除按钮
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 编辑按钮（仅作者可见）
+              if (_isAuthor(context)) ...[
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, color: Colors.white, size: 22),
+                  tooltip: '编辑',
+                  onPressed: _isDeleting ? null : _editArticle,
+                ),
+                const SizedBox(width: 4),
+              ],
+              
+              // 删除按钮（仅作者可见）
+              if (_isAuthor(context)) ...[
+                IconButton(
+                  icon: Icon(Icons.delete_outline, color: Colors.red.shade300, size: 22),
+                  tooltip: '删除',
+                  onPressed: _isDeleting ? null : _deleteArticle,
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildArticleContent() {
+    if (widget.articles.isEmpty) {
+      return const Center(
+        child: Text(
+          '暂无文章',
+          style: TextStyle(color: Colors.white, fontSize: 16),
+        ),
+      );
+    }
+
+    return PageView.builder(
+      controller: _pageController,
+      itemCount: widget.articles.length,
+      clipBehavior: Clip.none,
+      physics: const BouncingScrollPhysics(),
+      onPageChanged: (index) {
+        setState(() {
+          _currentPage = index;
+          _article = widget.articles[index];
+        });
+      },
+      itemBuilder: (context, index) {
+        final article = widget.articles[index];
+        
+        final card = _buildArticleCard(article);
+
+        // 只对当前页面应用Screenshot包装
+        if (index == _currentPage) {
+          return Screenshot(
+            controller: _screenshotController,
+            child: card,
+          );
+        } else {
+          return card;
+        }
+      },
+    );
+  }
+
+  Widget _buildArticleCard(Article article) {
+    // 确保与 article_preview_screen.dart 卡片尺寸一致
+    final cardWidth = MediaQuery.of(context).size.width - 32;
+    final textContainerWidth = cardWidth - 32;
+
+    final textContent = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          article.title, 
+          style: const TextStyle(
+            color: Colors.white, 
+            fontSize: 28, 
+            fontWeight: FontWeight.bold, 
+            shadows: [
+              Shadow(color: Colors.black, offset: Offset(0, 2), blurRadius: 4)
+            ]
+          )
+        ),
+        const SizedBox(height: 16),
+        Text(
+          article.author, 
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.9), 
+            fontSize: 17, 
+            shadows: const [
+              Shadow(color: Colors.black, offset: Offset(0, 1), blurRadius: 2)
+            ]
+          )
+        ),
+        const SizedBox(height: 20),
+        Flexible(
+          child: SingleChildScrollView(
+            child: Text(
+              article.content,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                height: 1.6,
+                shadows: [
+                  Shadow(color: Colors.black, offset: Offset(0, 1), blurRadius: 2),
+                  Shadow(color: Colors.black, offset: Offset(0, 2), blurRadius: 5),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+
+    return Container(
+      width: cardWidth,
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: article.imageUrl.isNotEmpty
+                  ? SimpleNetworkImage(imageUrl: ApiService.getImageUrlWithVariant(article.imageUrl, 'public'), fit: BoxFit.cover)
+                  : Container(color: Colors.grey[200]),
+            ),
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.black.withOpacity(0.1), Colors.black.withOpacity(0.5), Colors.black.withOpacity(0.85)],
                   ),
                 ),
               ),
+            ),
+            Positioned(
+              left: article.textPositionX ?? 15.0,
+              top: article.textPositionY ?? 200.0,
+              bottom: 30.0,
+              width: textContainerWidth,
+              child: textContent,
             ),
           ],
         ),
       ),
     );
   }
-  }
+}

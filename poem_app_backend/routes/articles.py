@@ -116,7 +116,6 @@ def create_article(current_user_id):
                 }
                 preview_image_url = ai_generator.generate_poem_image(temp_article_for_image)
             except Exception as e:
-                print(f"图片生成失败: {str(e)}")
                 preview_image_url = None
 
         # Create the article in a single, atomic operation with all data.

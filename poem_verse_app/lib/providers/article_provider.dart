@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:poem_verse_app/api/api_service.dart';
 import 'package:poem_verse_app/models/article.dart';
-import 'dart:developer' as developer;
+
 
 class ArticleProvider with ChangeNotifier {
   List<Article> _articles = [];
@@ -29,7 +29,7 @@ class ArticleProvider with ChangeNotifier {
 
     try {
       final articlesData = await ApiService.fetchArticlesByAuthorCount(limit: 10);
-      developer.log('API Response: ${jsonEncode(articlesData)}', name: 'ArticleProvider');
+
 
       final articlesList = articlesData['articles'] as List?;
       final newArticles = articlesList
@@ -44,12 +44,10 @@ class ArticleProvider with ChangeNotifier {
         _articles = [];
       }
 
-      developer.log('Processed Articles Count: ${_articles.length}', name: 'ArticleProvider');
-      developer.log('Top Article: ${_topArticle?.title}', name: 'ArticleProvider');
 
-    } catch (e, stackTrace) {
+
+    } catch (e) {
       _errorMessage = 'Failed to load articles. Please try again.';
-      developer.log('Error fetching articles: $e', name: 'ArticleProvider', error: e, stackTrace: stackTrace);
       _articles = [];
       _topArticle = null;
     } finally {
@@ -72,8 +70,8 @@ class ArticleProvider with ChangeNotifier {
       } else {
         _articles.addAll(newArticles);
       }
-    } catch (e, stackTrace) {
-      developer.log('Error fetching more articles: $e', name: 'ArticleProvider', error: e, stackTrace: stackTrace);
+    } catch (e) {
+      // 加载更多文章失败时不做任何处理，保持当前状态
     } finally {
       _isLoadingMore = false;
       notifyListeners();
@@ -131,28 +129,27 @@ class ArticleProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Step 1: Delete the old article.
-      final deleteResponse = await ApiService.deleteArticle(token, articleId);
-      if (deleteResponse.statusCode != 200) {
-        throw Exception('Failed to delete the old article to update.');
+      // 使用真正的更新API而不是删除后重建
+      final body = {
+        'title': title,
+        'content': content,
+        'tags': tags,
+        'author': author,
+        'preview_image_url': previewImageUrl,
+        'text_position_x': textPositionX,
+        'text_position_y': textPositionY,
+        'image_offset_x': imageOffsetX,
+        'image_offset_y': imageOffsetY,
+        'image_scale': imageScale,
+      };
+      
+      final response = await ApiService.updateArticleWithBody(articleId, body, token: token);
+      
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        throw Exception('更新文章失败: ${response.statusCode}');
       }
 
-      // Step 2: Create a new article with all the updated information.
-      final newArticle = await ApiService.createArticle(
-        token, title, content, tags, author, 
-        previewImageUrl: previewImageUrl, 
-        textPositionX: textPositionX, 
-        textPositionY: textPositionY,
-        imageOffsetX: imageOffsetX, 
-        imageOffsetY: imageOffsetY, 
-        imageScale: imageScale
-      );
-
-      if (newArticle == null) {
-        throw Exception('Failed to create the new article during update.');
-      }
-
-      // Step 3: Refresh the entire list to show the new article at the top.
+      // 更新成功后刷新数据
       await refreshAllData(token, userId);
 
     } catch (e) {
@@ -172,11 +169,28 @@ class ArticleProvider with ChangeNotifier {
   Future<void> deleteArticle(String token, String articleId) async {
     final response = await ApiService.deleteArticle(token, articleId);
     
-    if (response.statusCode == 200) {
-      await fetchArticles(token);
+    if (response.statusCode == 200 || response.statusCode == 204) {
+      // 删除成功后，从本地列表中移除该文章
+      _articles.removeWhere((article) => article.id == articleId);
+      
+      // 如果删除的是顶部文章，更新顶部文章
+      if (_topArticle?.id == articleId) {
+        if (_articles.isNotEmpty) {
+          _topArticle = _articles.first;
+          _articles = _articles.sublist(1);
+        } else {
+          _topArticle = null;
+        }
+      }
+      
+      notifyListeners();
     } else {
-      final errorData = json.decode(response.body);
-      throw Exception(errorData['error'] ?? '删除失败');
+      try {
+        final errorData = json.decode(response.body);
+        throw Exception(errorData['error'] ?? '删除失败');
+      } catch (e) {
+        throw Exception('删除失败: ${response.statusCode}');
+      }
     }
   }
 
