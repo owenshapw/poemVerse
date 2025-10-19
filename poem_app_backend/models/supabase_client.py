@@ -40,7 +40,7 @@ class SupabaseClient:
             return f"https://imagedelivery.net/{account_hash}/{image_id}/headphoto"
         return url
 
-    def create_article(self, user_id: str, title: str, content: str, tags: list, author: Optional[str] = None, text_position_x: Optional[float] = None, text_position_y: Optional[float] = None, preview_image_url: Optional[str] = None, image_offset_x: Optional[float] = None, image_offset_y: Optional[float] = None, image_scale: Optional[float] = None):
+    def create_article(self, user_id: str, title: str, content: str, tags: list, author: Optional[str] = None, text_position_x: Optional[float] = None, text_position_y: Optional[float] = None, preview_image_url: Optional[str] = None, image_offset_x: Optional[float] = None, image_offset_y: Optional[float] = None, image_scale: Optional[float] = None, is_public_visible: bool = True):
         """创建文章"""
         if self.supabase is None:
             raise RuntimeError("Supabase client not initialized. Call init_app() first.")
@@ -64,7 +64,9 @@ class SupabaseClient:
             # 新增：保存图片偏移与缩放
             'image_offset_x': image_offset_x,
             'image_offset_y': image_offset_y,
-            'image_scale': image_scale
+            'image_scale': image_scale,
+            # 可见性控制
+            'is_public_visible': is_public_visible
         }
         try:
             article_data['author'] = author_name
@@ -182,28 +184,40 @@ class SupabaseClient:
         result = self.supabase.table('comments').select('*').eq('article_id', article_id).order('created_at', desc=True).execute()
         return result.data
 
-    def get_recent_articles(self, limit=10):
+    def get_recent_articles(self, limit=10, include_private=False):
         """获取最新的文章列表"""
         if self.supabase is None:
             raise RuntimeError("Supabase client not initialized. Call init_app() first.")
-        result = self.supabase.table('articles').select('*').order('created_at', desc=True).limit(limit).execute()
+        query = self.supabase.table('articles').select('*')
+        
+        # 如果不包含私密文章，只返回公开可见的
+        if not include_private:
+            query = query.eq('is_public_visible', True)
+        
+        result = query.order('created_at', desc=True).limit(limit).execute()
         return result.data
 
-    def get_articles_by_author_count(self, limit=10):
+    def get_articles_by_author_count(self, limit=10, include_private=False):
         """获取按作者文章数量排序的文章列表，每个作者返回最新的一篇文章"""
         if self.supabase is None:
             raise RuntimeError("Supabase client not initialized. Call init_app() first.")
         
         # 直接使用备用方法，因为Supabase可能没有exec_sql函数
-        return self._get_articles_by_author_count_fallback(limit)
+        return self._get_articles_by_author_count_fallback(limit, include_private)
 
-    def _get_articles_by_author_count_fallback(self, limit=10):
+    def _get_articles_by_author_count_fallback(self, limit=10, include_private=False):
         """备用方法：获取所有文章后按作者分组"""
         if self.supabase is None:
             raise RuntimeError("Supabase client not initialized. Call init_app() first.")
         
         # 获取所有文章
-        result = self.supabase.table('articles').select('*').order('created_at', desc=True).execute()
+        query = self.supabase.table('articles').select('*')
+        
+        # 如果不包含私密文章，只获取公开可见的
+        if not include_private:
+            query = query.eq('is_public_visible', True)
+        
+        result = query.order('created_at', desc=True).execute()
         all_articles = result.data
         
         if not all_articles:
@@ -456,5 +470,48 @@ class SupabaseClient:
             }
         
         return result
+    
+    def update_article_visibility(self, article_id: str, user_id: str, is_public_visible: bool):
+        """
+        更新文章的首页可见性
+        
+        Args:
+            article_id: 文章ID
+            user_id: 用户ID（验证权限）
+            is_public_visible: 是否公开可见
+            
+        Returns:
+            dict: 更新后的文章数据
+        """
+        if self.supabase is None:
+            raise RuntimeError("Supabase client not initialized. Call init_app() first.")
+        
+        try:
+            # 更新数据
+            update_data = {
+                'is_public_visible': is_public_visible,
+                'updated_at': datetime.utcnow().isoformat()
+            }
+            
+            # 执行更新（只有文章作者可以更新）
+            resp = self.supabase.table('articles').update(update_data).eq('id', article_id).eq('user_id', user_id).execute()
+            
+            # 处理返回结果
+            data = None
+            if resp is None:
+                data = None
+            elif hasattr(resp, 'data'):
+                data = resp.data
+            elif isinstance(resp, dict) and 'data' in resp:
+                data = resp.get('data')
+            
+            if data:
+                return data[0] if isinstance(data, list) else data
+            
+            # 如果更新没有返回数据，则再查询一次
+            return self.get_article_by_id(article_id)
+            
+        except Exception as e:
+            raise Exception(f"更新文章可见性失败: {str(e)}")
 
 supabase_client = SupabaseClient()

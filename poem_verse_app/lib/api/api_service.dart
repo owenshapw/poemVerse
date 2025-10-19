@@ -586,4 +586,35 @@ class ApiService {
 
     return resp;
   }
+
+  /// 更新文章的首页可见性
+  /// [token] 授权token
+  /// [articleId] 文章ID
+  /// [isVisible] 是否在首页可见
+  static Future<Map<String, dynamic>> updateArticleVisibility(
+    String token, 
+    String articleId, 
+    bool isVisible
+  ) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('${AppConfig.backendApiUrl}/articles/$articleId/visibility'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({
+          'is_public_visible': isVisible,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('更新可见性失败: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('更新可见性失败: $e');
+    }
+  }
 }

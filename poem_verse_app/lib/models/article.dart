@@ -10,6 +10,7 @@ class Article {
   final double? imageScale;
   final double? textPositionX;
   final double? textPositionY;
+  final bool isPublicVisible;
 
   Article({
     required this.id,
@@ -23,6 +24,7 @@ class Article {
     this.imageScale,
     this.textPositionX,
     this.textPositionY,
+    this.isPublicVisible = true, // 默认公开可见
   });
 
   factory Article.fromJson(Map<String, dynamic> json) {
@@ -57,6 +59,7 @@ class Article {
       imageScale: parseNum(['image_scale','imageScale']),
       textPositionX: parseNum(['text_position_x','textPositionX']),
       textPositionY: parseNum(['text_position_y','textPositionY']),
+      isPublicVisible: json['is_public_visible'] ?? json['isPublicVisible'] ?? true,
     );
   }
 }

@@ -211,3 +211,42 @@ def delete_article(article_id, current_user_id):
         return jsonify({'message': '文章删除成功'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@articles_bp.route('/articles/<article_id>/visibility', methods=['PATCH'])
+@token_required
+def update_article_visibility(article_id, current_user_id):
+    """更新文章的首页可见性"""
+    try:
+        # 验证用户权限
+        article = supabase_client.get_article_by_id(article_id)
+        if not article or article['user_id'] != current_user_id:
+            return jsonify({'error': '无权限修改此文章'}), 403
+        
+        data = request.get_json()
+        is_public_visible = data.get('is_public_visible')
+        
+        if is_public_visible is None:
+            return jsonify({'error': '缺少 is_public_visible 参数'}), 400
+        
+        if not isinstance(is_public_visible, bool):
+            return jsonify({'error': 'is_public_visible 必须是布尔值'}), 400
+        
+        # 更新可见性
+        updated_article = supabase_client.update_article_visibility(
+            article_id, 
+            current_user_id, 
+            is_public_visible
+        )
+        
+        if not updated_article:
+            return jsonify({'error': '更新失败'}), 500
+        
+        return jsonify({
+            'success': True,
+            'article_id': article_id,
+            'is_public_visible': is_public_visible,
+            'message': f'文章已设置为{"公开" if is_public_visible else "私密"}'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
