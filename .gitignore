@@ -27,7 +27,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# lib/ # 注释掉这一行，避免影响Flutter的lib目录
 lib64/
 parts/
 sdist/
