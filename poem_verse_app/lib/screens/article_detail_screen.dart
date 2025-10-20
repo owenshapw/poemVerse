@@ -28,7 +28,7 @@ class ArticleDetailScreen extends StatefulWidget {
 }
 
 class ArticleDetailScreenState extends State<ArticleDetailScreen> {
-  late PageController _pageController;
+  PageController? _pageController;
   late Article _article;
   bool _isDeleting = false;
   int _currentPage = 0;
@@ -40,14 +40,35 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: widget.initialIndex);
     _article = widget.articles[widget.initialIndex];
     _currentPage = widget.initialIndex;
+    
+    // 延迟初始化PageController以避免动画冲突
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {
+          _pageController = PageController(
+            initialPage: widget.initialIndex,
+            viewportFraction: 1.0, // 全屏显示，不缩放
+            keepPage: true,
+          );
+        });
+      }
+    });
+  }
+  
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 确保 PageController 有正确的 viewportFraction 设置
+    if (_pageController != null && _pageController!.hasClients) {
+      _pageController!.dispose();
+    }
   }
 
   @override
   void dispose() {
-    _pageController.dispose();
+    _pageController?.dispose();
     super.dispose();
   }
 
@@ -466,40 +487,125 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
       );
     }
 
-    return PageView.builder(
-      controller: _pageController,
-      itemCount: widget.articles.length,
-      clipBehavior: Clip.none,
-      physics: const BouncingScrollPhysics(),
-      onPageChanged: (index) {
-        setState(() {
-          _currentPage = index;
-          _article = widget.articles[index];
-        });
-      },
-      itemBuilder: (context, index) {
-        final article = widget.articles[index];
-        
-        final card = _buildArticleCard(article);
+    if (_pageController == null) {
+      return const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+        ),
+      );
+    }
 
-        // 只对当前页面应用Screenshot包装
-        if (index == _currentPage) {
-          return Screenshot(
-            controller: _screenshotController,
-            child: card,
+    return ClipRect(
+      clipBehavior: Clip.none,
+      child: PageView.builder(
+        controller: _pageController!,
+        itemCount: widget.articles.length,
+        allowImplicitScrolling: true,
+        clipBehavior: Clip.none,
+        physics: const BouncingScrollPhysics(),
+        onPageChanged: (index) {
+          if (mounted) {
+            HapticFeedback.lightImpact();
+            setState(() {
+              _currentPage = index;
+              _article = widget.articles[index];
+            });
+          }
+        },
+        itemBuilder: (context, index) {
+          final article = widget.articles[index];
+          
+          return AnimatedBuilder(
+            animation: _pageController!,
+            builder: (context, child) {
+              double scale = 1.0;
+              double opacity = 1.0;
+              
+              // 正常动画计算
+              double page = _currentPage.toDouble();
+              if (_pageController!.hasClients && _pageController!.position.haveDimensions) {
+                final currentPage = _pageController!.page;
+                if (currentPage != null && !currentPage.isNaN && currentPage.isFinite) {
+                  page = currentPage;
+                }
+              }
+                    
+              double distance = (page - index).abs();
+              
+              // 确保 distance 是有效数值
+              if (distance.isNaN || !distance.isFinite) {
+                distance = 0.0;
+              }
+              
+              // 缩放计算：当前页面为1.0，相邻页面为0.85，更远的为0.75
+              if (distance <= 1.0) {
+                scale = 1.0 - (distance * 0.15); // 范围 0.85-1.0
+              } else {
+                scale = 0.75; // 更远的页面
+              }
+              
+              // 确保 scale 是有效数值
+              if (scale.isNaN || !scale.isFinite || scale < 0.1) {
+                scale = index == _currentPage ? 1.0 : 0.75;
+              }
+              
+              // 透明度计算
+              opacity = (1.0 - distance.clamp(0.0, 1.0) * 0.25).clamp(0.75, 1.0);
+              
+              // 确保 opacity 是有效数值
+              if (opacity.isNaN || !opacity.isFinite) {
+                opacity = index == _currentPage ? 1.0 : 0.75;
+              }
+            
+              // 最终安全检查：确保所有数值都是有效的
+              final safeScale = (scale.isNaN || !scale.isFinite || scale <= 0) ? 1.0 : scale.clamp(0.1, 2.0);
+              final safeOpacity = (opacity.isNaN || !opacity.isFinite) ? 1.0 : opacity.clamp(0.0, 1.0);
+              
+              final card = Center(
+                child: Transform.scale(
+                  scale: safeScale,
+                  child: Container(
+                    margin: const EdgeInsets.fromLTRB(16, 16, 16, 16), // 增加边距保持美观
+                    child: Stack(
+                      children: [
+                        // 阴影层 - 直接渲染到背景上
+                        Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.3 * safeOpacity),
+                                blurRadius: 20,
+                                offset: const Offset(0, 10),
+                              )
+                            ],
+                          ),
+                        ),
+                        // 卡片内容
+                        _buildArticleCard(article, safeOpacity),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+
+              // 只对当前页面应用Screenshot包装
+              if (index == _currentPage) {
+                return Screenshot(
+                  controller: _screenshotController,
+                  child: card,
+                );
+              } else {
+                return card;
+              }
+            },
           );
-        } else {
-          return card;
-        }
       },
+      ),
     );
   }
 
-  Widget _buildArticleCard(Article article) {
-    // 确保与 article_preview_screen.dart 卡片尺寸一致
-    final cardWidth = MediaQuery.of(context).size.width - 32;
-    final textContainerWidth = cardWidth - 32;
-
+  Widget _buildArticleCard(Article article, [double opacity = 1.0]) {
     final textContent = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -546,42 +652,53 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
       ],
     );
 
-    return Container(
-      width: cardWidth,
-      margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: article.imageUrl.isNotEmpty
-                  ? SimpleNetworkImage(imageUrl: ApiService.getImageUrlWithVariant(article.imageUrl, 'public'), fit: BoxFit.cover)
-                  : Container(color: Colors.grey[200]),
-            ),
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.black.withOpacity(0.1), Colors.black.withOpacity(0.5), Colors.black.withOpacity(0.85)],
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Stack(
+        children: [
+          // 背景图片
+          Positioned.fill(
+            child: article.imageUrl.isNotEmpty
+                ? SimpleNetworkImage(
+                    imageUrl: ApiService.getImageUrlWithVariant(article.imageUrl, 'public'),
+                    fit: BoxFit.cover,
+                  )
+                : Container(
+                    color: Colors.grey[300],
+                    child: const Center(
+                      child: Icon(
+                        Icons.image,
+                        size: 64,
+                        color: Colors.grey,
+                      ),
+                    ),
                   ),
+          ),
+          // 渐变遮罩
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.1),
+                    Colors.black.withOpacity(0.5),
+                    Colors.black.withOpacity(0.85),
+                  ],
                 ),
               ),
             ),
-            Positioned(
-              left: article.textPositionX ?? 15.0,
-              top: article.textPositionY ?? 200.0,
-              bottom: 30.0,
-              width: textContainerWidth,
-              child: textContent,
-            ),
-          ],
         ),
+          // 文本内容
+          Positioned(
+            left: article.textPositionX ?? 15.0,
+            top: article.textPositionY ?? 200.0,
+            bottom: 30.0,
+            right: 12.0,
+            child: textContent,
+          ),
+        ],
       ),
     );
   }
