@@ -221,8 +221,9 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
   }
 
   Widget _buildVisibilityToggle() {
-    // 使用与其他按钮相同的统一样式
+    // 使用与其他按钮相同的统一样式和高度
     return Container(
+      height: 36, // 固定高度确保一致性
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
@@ -237,7 +238,7 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
           borderRadius: BorderRadius.circular(8),
           onTap: _isUpdatingVisibility ? null : _toggleArticleVisibility,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -401,11 +402,33 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          // 返回按钮
-          IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
-            onPressed: () => Navigator.of(context).pop(),
+          // 返回按钮 - 使用统一样式
+          Container(
+            height: 36,
+            width: 36,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.2),
+                width: 0.5,
+              ),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => Navigator.of(context).pop(),
+                child: const Icon(
+                  Icons.arrow_back,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+            ),
           ),
+          
+          const SizedBox(width: 16),
           
           // 作者名称和页面计数
           Expanded(
@@ -422,17 +445,24 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
                 if (widget.articles.isNotEmpty) ...[
                   const SizedBox(width: 12),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    height: 36, // 与其他按钮保持一致的高度
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.white.withOpacity(0.1), // 与其他按钮一致的背景色
+                      borderRadius: BorderRadius.circular(8), // 与其他按钮一致的圆角
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.2), // 与其他按钮一致的边框
+                        width: 0.5,
+                      ),
                     ),
-                    child: Text(
-                      '${_currentPage + 1}/${widget.articles.length}',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
+                    child: Center(
+                      child: Text(
+                        '${_currentPage + 1}/${widget.articles.length}',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ),
@@ -442,27 +472,23 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
           ),
           
           // 右侧编辑和删除按钮
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 编辑按钮（仅作者可见）
-              if (_isAuthor(context)) ...[
+          if (_isAuthor(context))
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 编辑按钮
                 _buildActionButton(
                   icon: Icons.edit_outlined,
                   tooltip: '编辑',
                   onPressed: (_isDeleting || _isUpdatingVisibility) ? null : _editArticle,
                 ),
                 const SizedBox(width: 8),
-              ],
-              
-              // 可见性控制按钮（仅作者可见）
-              if (_isAuthor(context)) ...[
+                
+                // 可见性控制按钮
                 _buildVisibilityToggle(),
                 const SizedBox(width: 8),
-              ],
-              
-              // 删除按钮（仅作者可见）
-              if (_isAuthor(context)) ...[
+                
+                // 删除按钮
                 _buildActionButton(
                   icon: Icons.delete_outline,
                   tooltip: '删除',
@@ -470,7 +496,6 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   isDestructive: true,
                 ),
               ],
-            ],
           ),
         ],
       ),
@@ -713,6 +738,8 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
     Color? iconColor,
   }) {
     return Container(
+      height: 36, // 固定高度确保一致性
+      width: 36,  // 固定宽度确保方形按钮
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),

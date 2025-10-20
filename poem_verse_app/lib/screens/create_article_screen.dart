@@ -11,6 +11,7 @@ import 'package:poem_verse_app/models/article.dart';
 import 'package:poem_verse_app/widgets/interactive_image_preview.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:poem_verse_app/screens/article_preview_screen.dart';
+import 'package:poem_verse_app/utils/text_menu_utils.dart';
 
 import 'dart:io';
 import 'package:dio/dio.dart';
@@ -330,33 +331,7 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
                     ),
                   ),
                   textInputAction: TextInputAction.next, // 键盘显示“下一项”
-                  contextMenuBuilder: (context, editableTextState) {
-                    return AdaptiveTextSelectionToolbar.buttonItems(
-                      anchors: editableTextState.contextMenuAnchors,
-                      buttonItems: editableTextState.contextMenuButtonItems.map((item) {
-                        switch (item.label) {
-                          case 'Cut':
-                            return ContextMenuButtonItem(onPressed: item.onPressed, label: '剪切');
-                          case 'Copy':
-                            return ContextMenuButtonItem(onPressed: item.onPressed, label: '复制');
-                          case 'Paste':
-                            return ContextMenuButtonItem(onPressed: item.onPressed, label: '粘贴');
-                          case 'Select all':
-                            return ContextMenuButtonItem(onPressed: item.onPressed, label: '全选');
-                          case 'Select All':
-                            return ContextMenuButtonItem(onPressed: item.onPressed, label: '全选');
-                          case 'Look Up':
-                            return ContextMenuButtonItem(onPressed: item.onPressed, label: '查询');
-                          case 'Search Web':
-                            return ContextMenuButtonItem(onPressed: item.onPressed, label: '网页搜索');
-                          case 'Share':
-                            return ContextMenuButtonItem(onPressed: item.onPressed, label: '分享');
-                          default:
-                            return item;
-                        }
-                      }).toList(),
-                    );
-                  },
+                  contextMenuBuilder: TextMenuUtils.buildChineseContextMenu,
                 ),
                 SizedBox(height: 16),
                 // 内容输入 - 使用固定高度但可滚动
@@ -415,33 +390,7 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
                     expands: true,
                     textAlignVertical: TextAlignVertical.top,
                     textInputAction: TextInputAction.newline, // 键盘显示“换行”
-                    contextMenuBuilder: (context, editableTextState) {
-                      return AdaptiveTextSelectionToolbar.buttonItems(
-                        anchors: editableTextState.contextMenuAnchors,
-                        buttonItems: editableTextState.contextMenuButtonItems.map((item) {
-                          switch (item.label) {
-                            case 'Cut':
-                              return ContextMenuButtonItem(onPressed: item.onPressed, label: '剪切');
-                            case 'Copy':
-                              return ContextMenuButtonItem(onPressed: item.onPressed, label: '复制');
-                            case 'Paste':
-                              return ContextMenuButtonItem(onPressed: item.onPressed, label: '粘贴');
-                            case 'Select all':
-                              return ContextMenuButtonItem(onPressed: item.onPressed, label: '全选');
-                            case 'Select All':
-                              return ContextMenuButtonItem(onPressed: item.onPressed, label: '全选');
-                            case 'Look Up':
-                              return ContextMenuButtonItem(onPressed: item.onPressed, label: '查询');
-                            case 'Search Web':
-                              return ContextMenuButtonItem(onPressed: item.onPressed, label: '网页搜索');
-                            case 'Share':
-                              return ContextMenuButtonItem(onPressed: item.onPressed, label: '分享');
-                            default:
-                              return item;
-                          }
-                        }).toList(),
-                      );
-                    },
+                                      contextMenuBuilder: TextMenuUtils.buildChineseContextMenu,
                   ),
                 ),
                 SizedBox(height: 24),

@@ -8,6 +8,7 @@ import 'package:poem_verse_app/screens/register_screen.dart';
 import 'dart:ui';
 import 'package:poem_verse_app/screens/my_articles_screen.dart';
 import 'package:poem_verse_app/screens/home_screen.dart';
+import 'package:poem_verse_app/utils/text_menu_utils.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -60,8 +61,11 @@ class LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    
     return Scaffold(
       backgroundColor: Colors.transparent,
+      resizeToAvoidBottomInset: false, // 禁用自动调整，手动控制
       body: Stack(
         children: [
           // 渐变背景
@@ -84,187 +88,201 @@ class LoginScreenState extends State<LoginScreen> {
               color: Colors.white.withOpacity(0.1),
             ),
           ),
-          // 内容卡片
+          // 内容卡片 - 改进键盘适配和居中
           SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(32),
-                child: Container(
-                  padding: const EdgeInsets.all(32),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.3),
-                      width: 1,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  padding: EdgeInsets.only(
+                    left: 32,
+                    right: 32,
+                    top: 16,
+                    bottom: keyboardHeight > 0 ? keyboardHeight + 20 : 16,
+                  ),
+                  child: Container(
+                    width: double.infinity,
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight - 32, // 减去上下padding
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 24,
-                        offset: const Offset(0, 12),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.auto_stories,
-                        size: 64,
-                        color: Colors.white,
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        '欢迎回来',
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          shadows: [
-                            Shadow(
-                              color: Colors.black38,
-                              offset: Offset(0, 2),
-                              blurRadius: 4,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center, // 始终居中
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.3),
+                              width: 1,
                             ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        '登录诗篇，继续创作',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      TextField(
-                        controller: _emailController,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          labelText: '邮箱',
-                          labelStyle: const TextStyle(color: Colors.white),
-                          prefixIcon: const Icon(Icons.email, color: Colors.white),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.white.withOpacity(0.5)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 24,
+                                offset: const Offset(0, 12),
+                              ),
+                            ],
                           ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.white.withOpacity(0.5)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.white, width: 2),
-                          ),
-                          filled: true,
-                          fillColor: Colors.white.withOpacity(0.15),
-                        ),
-                        keyboardType: TextInputType.emailAddress,
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _passwordController,
-                        style: const TextStyle(color: Colors.white),
-                        obscureText: true,
-                        decoration: InputDecoration(
-                          labelText: '密码',
-                          labelStyle: const TextStyle(color: Colors.white),
-                          prefixIcon: const Icon(Icons.lock, color: Colors.white),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.white.withOpacity(0.5)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.white.withOpacity(0.5)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.white, width: 2),
-                          ),
-                          filled: true,
-                          fillColor: Colors.white.withOpacity(0.15),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _login,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF4834DF),
-                            foregroundColor: Colors.white,
-                            elevation: 8,
-                            shadowColor: Colors.black.withOpacity(0.3),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: _isLoading
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.auto_stories,
+                                    size: 48,
+                                    color: Colors.white,
                                   ),
-                                )
-                              : const Text(
-                                  '登录',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 1,
+                                  const SizedBox(height: 12),
+                                  const Text(
+                                    '登陆诗篇',
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                      shadows: [
+                                        Shadow(
+                                          color: Colors.black38,
+                                          offset: Offset(0, 2),
+                                          blurRadius: 4,
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
+                                  const SizedBox(height: 32), // 增加间距以匹配注册页高度
+                                  TextField(
+                                    controller: _emailController,
+                                    style: const TextStyle(color: Colors.white),
+                                    decoration: InputDecoration(
+                                      labelText: '邮箱',
+                                      labelStyle: const TextStyle(color: Colors.white),
+                                      prefixIcon: const Icon(Icons.email, color: Colors.white),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: Colors.white.withOpacity(0.5)),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: Colors.white.withOpacity(0.5)),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: const BorderSide(color: Colors.white, width: 2),
+                                      ),
+                                      filled: true,
+                                      fillColor: Colors.white.withOpacity(0.15),
+                                    ),
+                                    keyboardType: TextInputType.emailAddress,
+                                    contextMenuBuilder: TextMenuUtils.buildChineseContextMenu,
+                                  ),
+                                  const SizedBox(height: 20), // 稍微增加间距
+                                  TextField(
+                                    controller: _passwordController,
+                                    style: const TextStyle(color: Colors.white),
+                                    obscureText: true,
+                                    decoration: InputDecoration(
+                                      labelText: '密码',
+                                      labelStyle: const TextStyle(color: Colors.white),
+                                      prefixIcon: const Icon(Icons.lock, color: Colors.white),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: Colors.white.withOpacity(0.5)),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: Colors.white.withOpacity(0.5)),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: const BorderSide(color: Colors.white, width: 2),
+                                      ),
+                                      filled: true,
+                                      fillColor: Colors.white.withOpacity(0.15),
+                                    ),
+                                    contextMenuBuilder: TextMenuUtils.buildChineseContextMenu,
+                                  ),
+                                  const SizedBox(height: 32), // 增加间距以匹配注册页高度
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 48,
+                                    child: ElevatedButton(
+                                      onPressed: _isLoading ? null : _login,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF4834DF),
+                                        foregroundColor: Colors.white,
+                                        elevation: 8,
+                                        shadowColor: Colors.black.withOpacity(0.3),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                      ),
+                                      child: _isLoading
+                                          ? const SizedBox(
+                                              width: 20,
+                                              height: 20,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                              ),
+                                            )
+                                          : const Text(
+                                              '登录',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                                letterSpacing: 1,
+                                              ),
+                                            ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20), // 稍微增加间距
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                                      );
+                                    },
+                                    child: const Text(
+                                      '还没有账号？立即注册',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const RegisterScreen()),
-                          );
-                        },
-                        child: const Text(
-                          '还没有账号？立即注册',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
-          // Home按钮
+          // Home按钮 - 屏幕右上方，无背景
           Positioned(
             top: 0,
-            right: 16,
+            right: 32, // 与登录界面的右边距保持一致
             child: SafeArea(
-              child: IconButton(
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const HomeScreen()),
-                  );
-                },
-                icon: const Icon(
-                  Icons.home_outlined,
-                  color: Colors.white,
-                  size: 28,
+              child: Container(
+                margin: const EdgeInsets.only(top: 16), // 与登录界面的上边距保持一致
+                child: IconButton(
+                  onPressed: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (_) => const HomeScreen()),
+                    );
+                  },
+                  icon: const Icon(
+                    Icons.home_outlined,
+                    color: Colors.white,
+                    size: 24, // 略微增大图标尺寸以提高可见度
+                  ),
+                  tooltip: '返回首页',
+                  splashRadius: 24,
                 ),
-                tooltip: '返回首页',
-                splashRadius: 24,
               ),
             ),
           ),

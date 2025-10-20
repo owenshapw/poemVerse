@@ -118,7 +118,7 @@ class MyArticlesScreenState extends State<MyArticlesScreen> with WidgetsBindingO
           backgroundColor: Colors.transparent,
           child: ListView.builder(
             controller: _scrollController,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16), // 减少顶部间距，让第一个卡片上移
             itemCount: articles.length,
             itemBuilder: (context, index) => _buildArticleCard(articles[index], articles, index),
           ),
@@ -179,22 +179,23 @@ class MyArticlesScreenState extends State<MyArticlesScreen> with WidgetsBindingO
     final imageUrl = ApiService.getImageUrlWithVariant(imageField, 'public');
 
     final title = article.title.trim();
-    // extract first three non-empty lines from content
+    // extract first four non-empty lines from content
     final raw = article.content.replaceAll('\r', '');
     final lines = raw.split('\n').where((l) => l.trim().isNotEmpty).toList();
-    final firstThree = lines.isEmpty ? '' : 
+    final firstFour = lines.isEmpty ? '' : 
         (lines.length == 1 ? lines[0] : 
          lines.length == 2 ? '${lines[0]}\n${lines[1]}' :
-         '${lines[0]}\n${lines[1]}\n${lines[2]}');
+         lines.length == 3 ? '${lines[0]}\n${lines[1]}\n${lines[2]}' :
+         '${lines[0]}\n${lines[1]}\n${lines[2]}\n${lines[3]}');
 
     final imgOffsetX = _toDouble(article.imageOffsetX);
     final imgOffsetY = _toDouble(article.imageOffsetY);
     // Not scaling images in card view (fill width, keep aspect ratio), so imgScale not used here.
 
-    // 使用与创建页面相同的图片高度 180，并相应调整卡片总高度
-    const imageHeight = 180.0; // 与 create_article_screen.dart 保持一致
-    const textAreaHeight = 140.0; // 为文字内容预留足够空间
-    const cardHeight = imageHeight + textAreaHeight; // 总卡片高度
+    // 调整卡片尺寸显示4行文本
+    const imageHeight = 180.0; // 图片高度保持180px
+    const textAreaHeight = 150.0; // 增加文字区域高度以4行文本
+    const cardHeight = imageHeight + textAreaHeight; // 总卡片高度 330px
 
     Widget imageWidget;
     if (imageUrl.isNotEmpty) {
@@ -224,7 +225,10 @@ class MyArticlesScreenState extends State<MyArticlesScreen> with WidgetsBindingO
         // Clip card so transformed image is clipped to this card's bounds and won't
         // overlap neighboring cards.
         clipBehavior: Clip.hardEdge,
-        margin: const EdgeInsets.symmetric(vertical: 8),
+        margin: EdgeInsets.only(
+          top: index == 0 ? 4 : 8, // 第一个卡片上边距更小
+          bottom: 10,
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: SizedBox(
           height: cardHeight,
@@ -250,16 +254,16 @@ class MyArticlesScreenState extends State<MyArticlesScreen> with WidgetsBindingO
                   ],
                 ),
               ),
-              // Bottom half: title + first two lines (no author)
+              // Bottom half: title + first four lines (no author)
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis), // 保持18字体大小
                       const SizedBox(height: 8),
-                      Text(firstThree, style: TextStyle(fontSize: 14, color: Colors.grey[800]), maxLines: 3, overflow: TextOverflow.ellipsis),
+                      Text(firstFour, style: TextStyle(fontSize: 16, color: Colors.grey[800], height: 1.4), maxLines: 4, overflow: TextOverflow.ellipsis), // 增加到4行文本显示
                       const Spacer(),
                     ],
                   ),
