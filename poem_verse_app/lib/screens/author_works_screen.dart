@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // 添加触觉反馈
 import 'package:poem_verse_app/api/api_service.dart';
 import 'package:poem_verse_app/models/article.dart';
-import 'package:poem_verse_app/widgets/interactive_image_preview.dart';
+import 'package:poem_verse_app/widgets/simple_network_image.dart';
 import 'dart:ui';
 import 'package:screenshot/screenshot.dart';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
@@ -730,32 +730,32 @@ class _AuthorWorksScreenState extends State<AuthorWorksScreen> {
                   }
                 }
                       
-                  double distance = (page - index).abs();
-                  
-                  // 确保 distance 是有效数值
-                  if (distance.isNaN || !distance.isFinite) {
-                    distance = 0.0;
-                  }
-                  
-                  // 缩放计算：当前页面为1.0，相邻页面为0.85，更远的为0.75
-                  if (distance <= 1.0) {
-                    scale = 1.0 - (distance * 0.15); // 范围 0.85-1.0
-                  } else {
-                    scale = 0.75; // 更远的页面
-                  }
-                  
-                  // 确保 scale 是有效数值
-                  if (scale.isNaN || !scale.isFinite || scale < 0.1) {
-                    scale = index == _currentIndex ? 1.0 : 0.75;
-                  }
-                  
-                  // 透明度计算
-                  opacity = (1.0 - distance.clamp(0.0, 1.0) * 0.25).clamp(0.75, 1.0);
-                  
-                  // 确保 opacity 是有效数值
-                  if (opacity.isNaN || !opacity.isFinite) {
-                    opacity = index == _currentIndex ? 1.0 : 0.75;
-                  }
+                double distance = (page - index).abs();
+                
+                // 确保 distance 是有效数值
+                if (distance.isNaN || !distance.isFinite) {
+                  distance = 0.0;
+                }
+                
+                // 缩放计算：当前页面为1.0，相邻页面为0.85，更远的为0.75
+                if (distance <= 1.0) {
+                  scale = 1.0 - (distance * 0.15); // 范围 0.85-1.0
+                } else {
+                  scale = 0.75; // 更远的页面
+                }
+                
+                // 确保 scale 是有效数值
+                if (scale.isNaN || !scale.isFinite || scale < 0.1) {
+                  scale = index == _currentIndex ? 1.0 : 0.75;
+                }
+                
+                // 透明度计算
+                opacity = (1.0 - distance.clamp(0.0, 1.0) * 0.25).clamp(0.75, 1.0);
+                
+                // 确保 opacity 是有效数值
+                if (opacity.isNaN || !opacity.isFinite) {
+                  opacity = index == _currentIndex ? 1.0 : 0.75;
+                }
                 
                 // 最终安全检查：确保所有数值都是有效的
                 final safeScale = (scale.isNaN || !scale.isFinite || scale <= 0) ? 1.0 : scale.clamp(0.1, 2.0);
@@ -814,14 +814,8 @@ class _AuthorWorksScreenState extends State<AuthorWorksScreen> {
           // 背景图片
           Positioned.fill(
             child: article.imageUrl.isNotEmpty
-                ? InteractiveImagePreview(
+                ? SimpleNetworkImage(
                     imageUrl: ApiService.getImageUrlWithVariant(article.imageUrl, 'public'),
-                    width: double.infinity,
-                    height: double.infinity,
-                    initialOffsetX: 0.0, // 作品集页面不应用 offset
-                    initialOffsetY: 0.0, // 作品集页面不应用 offset
-                    initialScale: 1.0, // 作品集页面不应用 scale
-                    isInteractive: false,
                     fit: BoxFit.cover,
                   )
                 : Container(
