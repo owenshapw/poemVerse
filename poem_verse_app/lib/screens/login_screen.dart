@@ -7,6 +7,7 @@ import 'package:poem_verse_app/providers/auth_provider.dart';
 import 'package:poem_verse_app/screens/register_screen.dart';
 import 'dart:ui';
 import 'package:poem_verse_app/screens/my_articles_screen.dart';
+import 'package:poem_verse_app/screens/home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -242,6 +243,28 @@ class LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                 ),
+              ),
+            ),
+          ),
+          // Home按钮
+          Positioned(
+            top: 0,
+            right: 16,
+            child: SafeArea(
+              child: IconButton(
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const HomeScreen()),
+                  );
+                },
+                icon: const Icon(
+                  Icons.home_outlined,
+                  color: Colors.white,
+                  size: 28,
+                ),
+                tooltip: '返回首页',
+                splashRadius: 24,
               ),
             ),
           ),
