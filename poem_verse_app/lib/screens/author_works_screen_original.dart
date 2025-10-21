@@ -606,17 +606,30 @@ class _AuthorWorksScreenState extends State<AuthorWorksScreen> {
                 if (_articles.isNotEmpty) ...[
                   const SizedBox(width: 12),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    height: 32, // 与其他按钮保持一致的高度
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.white.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(8), // 统一圆角
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.15),
+                        width: 0.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                     child: Text(
                       '${_currentIndex + 1}/${_articles.length}',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
+                        color: Colors.white.withOpacity(0.95),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.3,
                       ),
                     ),
                   ),

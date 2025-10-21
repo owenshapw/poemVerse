@@ -193,7 +193,12 @@ class ArticlePreviewScreenState extends State<ArticlePreviewScreen> {
               children: [
                 _buildTopBar(),
                 Expanded(
-                  child: _buildArticleCard(),
+                  child: ClipRect(
+                    clipBehavior: Clip.none, // 确保不裁剪阴影，与article_detail_screen保持一致
+                    child: Center(
+                      child: _buildArticleCard(),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -206,16 +211,19 @@ class ArticlePreviewScreenState extends State<ArticlePreviewScreen> {
   Widget _buildTopBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Column(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center, // 确保所有元素垂直居中对齐
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
-                onPressed: () => Navigator.pop(context),
-              ),
-              Text(
+          // 返回按钮 - 使用与author_works_screen一致的IconButton
+          IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
+            onPressed: () => Navigator.pop(context),
+          ),
+          
+          // 中间的提示文本
+          Expanded(
+            child: Center(
+              child: Text(
                 '拖拽调整文字位置',
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.9),
@@ -223,28 +231,56 @@ class ArticlePreviewScreenState extends State<ArticlePreviewScreen> {
                   fontWeight: FontWeight.w500,
                 ),
               ),
-          ElevatedButton(
-            onPressed: _isPublishing ? null : () async {
-              // 使用和create_article_screen相同的发布逻辑
-              await _publishArticle();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.deepPurple,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             ),
-            child: _isPublishing 
-                ? SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Text('发布'),
+          ),
+          
+          // 发布按钮 - 与article_detail_screen保持一致的32px轻盈风格
+          Container(
+            height: 32, // 调整为与article_detail_screen一致的轻盈高度
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(8), // 统一圆角
+              border: Border.all(
+                color: Colors.white.withOpacity(0.15),
+                width: 0.5,
               ),
-            ],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: _isPublishing ? null : () async {
+                  await _publishArticle();
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), // 调整内边距适应32px高度
+                  child: _isPublishing 
+                      ? SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white.withOpacity(0.9),
+                          ),
+                        )
+                      : Text(
+                          '发布',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 12, // 调整字体大小适应轻盈设计
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -252,9 +288,6 @@ class ArticlePreviewScreenState extends State<ArticlePreviewScreen> {
   }
 
   Widget _buildArticleCard() {
-    final cardWidth = MediaQuery.of(context).size.width - 32;
-    final textContainerWidth = cardWidth - 32;
-
     // get current user id if AuthProvider is available, otherwise empty
     String currentUserId = '';
     try {
@@ -301,8 +334,7 @@ class ArticlePreviewScreenState extends State<ArticlePreviewScreen> {
     );
 
     return Container(
-      width: cardWidth,
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 16), // 增加顶部间距16px（从16改为32）
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
@@ -331,7 +363,7 @@ class ArticlePreviewScreenState extends State<ArticlePreviewScreen> {
               left: _textPositionX,
               top: _textPositionY,
               bottom: 30.0,
-              width: textContainerWidth,
+              right: 12.0,
               child: GestureDetector(
                 onPanUpdate: (details) {
                   setState(() {

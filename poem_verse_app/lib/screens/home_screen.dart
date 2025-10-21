@@ -7,11 +7,10 @@ import 'package:poem_verse_app/models/article.dart';
 import 'package:provider/provider.dart';
 import 'package:poem_verse_app/providers/article_provider.dart';
 import 'package:poem_verse_app/providers/auth_provider.dart';
-import 'dart:ui';
 import 'package:flutter/services.dart';
 import 'package:poem_verse_app/screens/login_screen.dart';
-import 'package:poem_verse_app/widgets/interactive_image_preview.dart';
 import 'package:poem_verse_app/screens/author_works_screen.dart';
+import 'package:poem_verse_app/widgets/interactive_image_preview.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -30,7 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       
-      // 传递用户token以支持可见性过滤
+      // 初始加载时使用缓存，提高加载速度
       articleProvider.fetchArticles(authProvider.token);
     });
 
@@ -74,11 +73,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-            child: Container(
-              color: Colors.white.withOpacity(0.05),
-            ),
+          // 简化的遮罩层，减少GPU消耗
+          Container(
+            color: Colors.black.withOpacity(0.15),
           ),
           SafeArea(
             child: Consumer<ArticleProvider>(
@@ -113,6 +110,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 return ListView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.only(top: 48),
+                  // 性能优化
+                  cacheExtent: 500, // 预加载范围
+                  addAutomaticKeepAlives: false, // 减少内存占用
                   itemCount: articleProvider.articles.length +
                       (articleProvider.topArticle != null ? 1 : 0) +
                       (articleProvider.isLoadingMore ? 1 : 0),
@@ -184,12 +184,19 @@ class _HomeScreenState extends State<HomeScreen> {
                 initialArticle: article,
               ),
             ),
-                      ).then((_) {
+            ).then((result) {
               if (!mounted) return;
               final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
               final authProvider = Provider.of<AuthProvider>(context, listen: false);
-              // 传递用户token以支持可见性过滤
-              articleProvider.fetchArticles(authProvider.token);
+              
+              // 根据返回结果决定是否需要强制刷新
+              if (result == 'deleted' || result == 'updated') {
+                // 如果有删除或更新操作，强制刷新以更新图片位置
+                articleProvider.forceRefreshHomeData(authProvider.token);
+              } else {
+                // 正常返回，使用缓存加快加载
+                articleProvider.fetchArticles(authProvider.token);
+              }
             });
         } catch (e) {
           if (mounted) {
@@ -221,9 +228,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   imageUrl: ApiService.getImageUrlWithVariant(article.imageUrl, 'public'),
                   width: double.infinity,
                   height: 200,
-                  initialOffsetX: 0.0, // X轴偏移为0（禁用水平移动）
-                  initialOffsetY: article.imageOffsetY ?? 0.0, // 继承创建页面调整的Y轴偏移
-                  initialScale: 1.0, // 缩放为1（禁用缩放）
+                  initialOffsetX: article.imageOffsetX ?? 0.0, // 应用X轴偏移
+                  initialOffsetY: article.imageOffsetY ?? 0.0, // 应用Y轴偏移  
+                  initialScale: article.imageScale ?? 1.0, // 应用缩放
                   isInteractive: false, // 禁用交互，只显示不允许调整
                   fit: BoxFit.cover,
                 ),
@@ -325,12 +332,19 @@ class _HomeScreenState extends State<HomeScreen> {
                 initialArticle: article,
               ),
             ),
-                      ).then((_) {
+            ).then((result) {
               if (!mounted) return;
               final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
               final authProvider = Provider.of<AuthProvider>(context, listen: false);
-              // 传递用户token以支持可见性过滤
-              articleProvider.fetchArticles(authProvider.token);
+              
+              // 根据返回结果决定是否需要强制刷新
+              if (result == 'deleted' || result == 'updated') {
+                // 如果有删除或更新操作，强制刷新以更新图片位置
+                articleProvider.forceRefreshHomeData(authProvider.token);
+              } else {
+                // 正常返回，使用缓存加快加载
+                articleProvider.fetchArticles(authProvider.token);
+              }
             });
         } catch (e) {
           if (mounted) {
@@ -369,20 +383,38 @@ class _HomeScreenState extends State<HomeScreen> {
                   bottomLeft: Radius.circular(18),
                 ),
                 child: article.imageUrl.isNotEmpty
-                    ? InteractiveImagePreview(
-                        imageUrl: ApiService.getImageUrlWithVariant(article.imageUrl, 'list'),
+                    ? Image.network(
+                        ApiService.getImageUrlWithVariant(article.imageUrl, 'list'),
                         width: double.infinity,
                         height: double.infinity,
-                        initialOffsetX: 0.0, // 列表预览不应用 offset
-                        initialOffsetY: 0.0, // 列表预览不应用 offset
-                        initialScale: 1.0, // 列表预览不应用 scale
-                        isInteractive: false,
                         fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
+                            color: Colors.grey.withOpacity(0.1),
+                            child: const Center(
+                              child: CircularProgressIndicator(strokeWidth: 1.5),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.white.withOpacity(0.1),
+                            child: Icon(
+                              Icons.image_outlined,
+                              color: Colors.white.withOpacity(0.3),
+                              size: 28,
+                            ),
+                          );
+                        },
                       )
                     : Container(
                         color: Colors.white.withOpacity(0.1),
-                        child: Icon(Icons.image_outlined,
-                            color: Colors.white.withOpacity(0.3), size: 28),
+                        child: Icon(
+                          Icons.image_outlined,
+                          color: Colors.white.withOpacity(0.3),
+                          size: 28,
+                        ),
                       ),
               ),
             ),

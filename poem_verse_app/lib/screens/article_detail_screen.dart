@@ -221,16 +221,23 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
   }
 
   Widget _buildVisibilityToggle() {
-    // 使用与其他按钮相同的统一样式和高度
+    // 使用与其他导航按钮一致的轻盈风格
     return Container(
-      height: 36, // 固定高度确保一致性
+      height: 32, // 与其他导航按钮保持一致的轻盈高度
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
+        color: Colors.white.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(8), // 统一圆角
         border: Border.all(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withOpacity(0.15),
           width: 0.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -238,24 +245,24 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
           borderRadius: BorderRadius.circular(8),
           onTap: _isUpdatingVisibility ? null : _toggleArticleVisibility,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (_isUpdatingVisibility) ...[
                   SizedBox(
-                    width: 16,
-                    height: 16,
+                    width: 14,
+                    height: 14,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white.withOpacity(0.8)),
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white.withOpacity(0.9)),
                     ),
                   ),
                 ] else ...[
                   Icon(
                     _article.isPublicVisible ? Icons.public : Icons.lock,
                     color: Colors.white.withOpacity(0.9),
-                    size: 16,
+                    size: 14,
                   ),
                 ],
                 const SizedBox(width: 4),
@@ -264,7 +271,7 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.9),
                     fontSize: 12,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
@@ -401,75 +408,29 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // 返回按钮 - 使用统一样式
-          Container(
-            height: 36,
-            width: 36,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.2),
-                width: 0.5,
-              ),
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(8),
-                onTap: () => Navigator.of(context).pop(),
-                child: const Icon(
-                  Icons.arrow_back,
-                  color: Colors.white,
-                  size: 20,
-                ),
-              ),
-            ),
+          // 返回按钮 - 优雅轻盈的设计
+          _buildNavButton(
+            icon: Icons.arrow_back_ios_rounded,
+            onPressed: () => Navigator.of(context).pop(),
           ),
           
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           
-          // 作者名称和页面计数
+          // 页面计数 - 居中显示
           Expanded(
-            child: Row(
-              children: [
-                Text(
-                  _article.author,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                if (widget.articles.isNotEmpty) ...[
-                  const SizedBox(width: 12),
-                  Container(
-                    height: 36, // 与其他按钮保持一致的高度
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1), // 与其他按钮一致的背景色
-                      borderRadius: BorderRadius.circular(8), // 与其他按钮一致的圆角
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.2), // 与其他按钮一致的边框
-                        width: 0.5,
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '${_currentPage + 1}/${widget.articles.length}',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
+            child: Center(
+              child: widget.articles.isNotEmpty
+                  ? _buildNavTextButton(
+                      text: '${_currentPage + 1}/${widget.articles.length}',
+                      onPressed: null, // 页面计数不可点击
+                    )
+                  : const SizedBox.shrink(),
             ),
           ),
+          
+          const SizedBox(width: 12),
           
           // 右侧编辑和删除按钮
           if (_isAuthor(context))
@@ -477,23 +438,23 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 // 编辑按钮
-                _buildActionButton(
+                _buildNavButton(
                   icon: Icons.edit_outlined,
-                  tooltip: '编辑',
                   onPressed: (_isDeleting || _isUpdatingVisibility) ? null : _editArticle,
                 ),
+                
                 const SizedBox(width: 8),
                 
                 // 可见性控制按钮
                 _buildVisibilityToggle(),
+                
                 const SizedBox(width: 8),
                 
-                // 删除按钮
-                _buildActionButton(
+                // 删除按钮 - 改为白色
+                _buildNavButton(
                   icon: Icons.delete_outline,
-                  tooltip: '删除',
+                  iconColor: Colors.white,
                   onPressed: (_isDeleting || _isUpdatingVisibility) ? null : _deleteArticle,
-                  isDestructive: true,
                 ),
               ],
           ),
@@ -521,13 +482,14 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
     }
 
     return ClipRect(
-      clipBehavior: Clip.none,
+      clipBehavior: Clip.none, // 确保不裁剪阴影
       child: PageView.builder(
-        controller: _pageController!,
         itemCount: widget.articles.length,
+        controller: _pageController!,
+        // 添加缓存页面以提高性能
         allowImplicitScrolling: true,
-        clipBehavior: Clip.none,
-        physics: const BouncingScrollPhysics(),
+        clipBehavior: Clip.none, // 关键修复：不裁剪阴影
+        physics: const BouncingScrollPhysics(), // 添加弹性滚动效果
         onPageChanged: (index) {
           if (mounted) {
             HapticFeedback.lightImpact();
@@ -590,7 +552,7 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
                 child: Transform.scale(
                   scale: safeScale,
                   child: Container(
-                    margin: const EdgeInsets.fromLTRB(16, 16, 16, 16), // 增加边距保持美观
+                    margin: const EdgeInsets.fromLTRB(16, 32, 16, 16), // 增加顶部间距16px（从16改为32）
                     child: Stack(
                       children: [
                         // 阴影层 - 直接渲染到背景上
@@ -715,7 +677,7 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
               ),
             ),
         ),
-          // 文本内容
+          // 文本内容 - 恢复原始的布局设置
           Positioned(
             left: article.textPositionX ?? 15.0,
             top: article.textPositionY ?? 200.0,
@@ -723,30 +685,36 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
             right: 12.0,
             child: textContent,
           ),
-        ],
+                ],
       ),
     );
   }
 
-  /// 统一的操作按钮组件
-  Widget _buildActionButton({
+  /// 优雅轻盈的统一导航按钮样式
+  Widget _buildNavButton({
     required IconData icon,
-    required String tooltip,
     required VoidCallback? onPressed,
-    bool isDestructive = false,
-    bool showLoadingIcon = false,
+    Color? backgroundColor,
     Color? iconColor,
+    double? width,
   }) {
     return Container(
-      height: 36, // 固定高度确保一致性
-      width: 36,  // 固定宽度确保方形按钮
+      height: 32, // 轻盈的高度
+      width: width ?? 32, // 默认方形，可自定义宽度
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
+        color: (backgroundColor ?? Colors.white).withOpacity(0.12),
+        borderRadius: BorderRadius.circular(8), // 统一圆角
         border: Border.all(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withOpacity(0.15),
           width: 0.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -754,21 +722,68 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
           borderRadius: BorderRadius.circular(8),
           onTap: onPressed,
           child: Container(
-            padding: const EdgeInsets.all(8),
-            child: showLoadingIcon
-                ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white.withOpacity(0.8)),
-                    ),
-                  )
-                : Icon(
-                    icon,
-                    color: iconColor ?? Colors.white.withOpacity(0.9),
-                    size: 20,
+            padding: const EdgeInsets.all(6), // 精致的内边距
+            child: Icon(
+              icon,
+              color: (iconColor ?? Colors.white).withOpacity(0.9),
+              size: 18, // 统一的图标尺寸
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 优雅轻盈的文本按钮样式
+  Widget _buildNavTextButton({
+    required String text,
+    required VoidCallback? onPressed,
+    Color? backgroundColor,
+    Color? textColor,
+    Widget? leading,
+  }) {
+    return Container(
+      height: 32, // 与图标按钮保持一致的高度
+      decoration: BoxDecoration(
+        color: (backgroundColor ?? Colors.white).withOpacity(0.12),
+        borderRadius: BorderRadius.circular(16), // 更圆润的设计
+        border: Border.all(
+          color: Colors.white.withOpacity(0.15),
+          width: 0.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onPressed,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (leading != null) ...[
+                  leading,
+                  const SizedBox(width: 4),
+                ],
+                Text(
+                  text,
+                  style: TextStyle(
+                    color: (textColor ?? Colors.white).withOpacity(0.95),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
                   ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

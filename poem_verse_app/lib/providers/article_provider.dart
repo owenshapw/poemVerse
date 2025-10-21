@@ -13,6 +13,11 @@ class ArticleProvider with ChangeNotifier {
   bool _hasMore = true;
   bool _isLoadingMore = false;
   String? _errorMessage;
+  
+  // 缓存相关属性
+  DateTime? _lastFetchTime;
+  String? _cachedToken;
+  static const Duration _cacheValidDuration = Duration(minutes: 3); // 3分钟缓存
 
   List<Article> get articles => _articles;
   Article? get topArticle => _topArticle;
@@ -20,7 +25,18 @@ class ArticleProvider with ChangeNotifier {
   bool get isLoadingMore => _isLoadingMore;
   String? get errorMessage => _errorMessage;
 
-  Future<void> fetchArticles([String? token]) async {
+  Future<void> fetchArticles([String? token, bool forceRefresh = false]) async {
+    // 检查缓存是否有效（但要特别注意首页图片位置刷新）
+    if (!forceRefresh && 
+        _lastFetchTime != null && 
+        _cachedToken == token &&
+        DateTime.now().difference(_lastFetchTime!) < _cacheValidDuration &&
+        (_articles.isNotEmpty || _topArticle != null)) {
+      // 使用缓存数据，但仍然通知监听者以更新UI
+      notifyListeners();
+      return;
+    }
+    
     _isLoading = true;
     _page = 1;
     _hasMore = true;
@@ -43,11 +59,18 @@ class ArticleProvider with ChangeNotifier {
         _topArticle = null;
         _articles = [];
       }
+      
+      // 更新缓存信息
+      _lastFetchTime = DateTime.now();
+      _cachedToken = token;
 
     } catch (e) {
       _errorMessage = 'Failed to load articles. Please try again.';
       _articles = [];
       _topArticle = null;
+      // 发生错误时清除缓存
+      _lastFetchTime = null;
+      _cachedToken = null;
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -88,6 +111,8 @@ class ArticleProvider with ChangeNotifier {
 
     _isLoading = false;
     if (newArticle != null) {
+      // 新文章创建成功，清除缓存以确保下次加载时获取最新数据
+      clearCache();
       // Add the new article to the beginning of the list
       _articles.insert(0, newArticle);
       notifyListeners();
@@ -147,7 +172,9 @@ class ArticleProvider with ChangeNotifier {
         throw Exception('更新文章失败: ${response.statusCode}');
       }
 
-      // 更新成功后刷新数据
+      // 更新成功后清除缓存，确保图片位置能正确刷新
+      clearCache();
+      // 刷新数据
       await refreshAllData(token, userId);
 
     } catch (e) {
@@ -163,12 +190,26 @@ class ArticleProvider with ChangeNotifier {
     // This is the correct refresh logic. It fetches the articles for the current user.
     await getMyArticles(token, userId);
   }
+  
+  // 新增：强制刷新首页数据（用于图片位置更新等场景）
+  Future<void> forceRefreshHomeData([String? token]) async {
+    await fetchArticles(token, true); // 强制刷新
+  }
+  
+  // 新增：清除缓存（用于特殊情况）
+  void clearCache() {
+    _lastFetchTime = null;
+    _cachedToken = null;
+  }
 
   Future<void> deleteArticle(String token, String articleId) async {
     final response = await ApiService.deleteArticle(token, articleId);
     
     if (response.statusCode == 200 || response.statusCode == 204) {
-      // 删除成功后，从本地列表中移除该文章
+      // 删除成功后，清除缓存以确保数据一致性
+      clearCache();
+      
+      // 从本地列表中移除该文章
       _articles.removeWhere((article) => article.id == articleId);
       
       // 如果删除的是顶部文章，更新顶部文章

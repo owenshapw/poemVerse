@@ -590,6 +590,7 @@ class _AuthorWorksScreenState extends State<AuthorWorksScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center, // 确保所有元素垂直居中对齐
         children: [
           IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
@@ -611,17 +612,32 @@ class _AuthorWorksScreenState extends State<AuthorWorksScreen> {
                 if (_articles.isNotEmpty) ...[
                   const SizedBox(width: 12),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    height: 32, // 与IconButton保持一致的高度
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), // 调整内边距适应32px高度
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16), // 调整圆角适应32px高度
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.3),
+                        width: 0.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
-                    child: Text(
-                      '${_currentIndex + 1}/${_articles.length}',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
+                    child: Center(
+                      child: Text(
+                        '${_currentIndex + 1}/${_articles.length}',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.95),
+                          fontSize: 12, // 调整字体大小适应32px高度
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.3, // 调整字母间距
+                        ),
                       ),
                     ),
                   ),
@@ -631,39 +647,46 @@ class _AuthorWorksScreenState extends State<AuthorWorksScreen> {
           ),
           // 点赞按钮和计数 - 移到中间位置
           if (_articles.isNotEmpty) ...[
-            GestureDetector(
-              onTap: () => _toggleLike(_articles[_currentIndex].id),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _likedArticles[_articles[_currentIndex].id] == true 
-                          ? Icons.favorite
-                          : Icons.favorite_border,
-                      color: _likedArticles[_articles[_currentIndex].id] == true 
-                          ? Colors.red.shade300.withOpacity(0.9)
-                          : Colors.white.withOpacity(0.7),
-                      size: 22,
-                    ),
-                    if (_likeCounts[_articles[_currentIndex].id] != null && 
-                        _likeCounts[_articles[_currentIndex].id]! > 0) ...[
-                      const SizedBox(width: 6),
-                      Text(
-                        '${_likeCounts[_articles[_currentIndex].id]}',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
+            SizedBox(
+              height: 48, // 与IconButton保持一致的高度
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(24),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(24),
+                  onTap: () => _toggleLike(_articles[_currentIndex].id),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _likedArticles[_articles[_currentIndex].id] == true 
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          color: _likedArticles[_articles[_currentIndex].id] == true 
+                              ? Colors.red.shade300.withOpacity(0.9)
+                              : Colors.white.withOpacity(0.7),
+                          size: 20, // 统一图标尺寸
                         ),
-                      ),
-                    ],
-                  ],
+                        if (_likeCounts[_articles[_currentIndex].id] != null && 
+                            _likeCounts[_articles[_currentIndex].id]! > 0) ...[
+                          const SizedBox(width: 6),
+                          Text(
+                            '${_likeCounts[_articles[_currentIndex].id]}',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.8),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
-            const SizedBox(width: 8),
             IconButton(
               icon: const Icon(Icons.download, color: Colors.white, size: 24),
               tooltip: '保存为图片',
