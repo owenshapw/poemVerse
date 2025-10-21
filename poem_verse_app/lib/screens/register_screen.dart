@@ -58,12 +58,15 @@ class RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-    
     return Scaffold(
       backgroundColor: Colors.transparent,
-      resizeToAvoidBottomInset: false, // 禁用自动调整，手动控制
-      body: Stack(
+      resizeToAvoidBottomInset: false,
+      body: GestureDetector(
+        onTap: () {
+          // 点击空白区域收起键盘
+          FocusScope.of(context).unfocus();
+        },
+        child: Stack(
         children: [
           // 更鲜艳的渐变背景
           Container(
@@ -91,12 +94,7 @@ class RegisterScreenState extends State<RegisterScreen> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 return SingleChildScrollView(
-                  padding: EdgeInsets.only(
-                    left: 32,
-                    right: 32,
-                    top: 16,
-                    bottom: keyboardHeight > 0 ? keyboardHeight + 20 : 16,
-                  ),
+                  padding: const EdgeInsets.all(32),
                   child: Container(
                     width: double.infinity,
                     constraints: BoxConstraints(
@@ -150,6 +148,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                               TextField(
                                 controller: _usernameController,
                                 style: const TextStyle(color: Colors.white),
+                                scrollPadding: EdgeInsets.zero,
                                 decoration: InputDecoration(
                                   labelText: '用户名',
                                   labelStyle: const TextStyle(color: Colors.white),
@@ -175,6 +174,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                               TextField(
                                 controller: _emailController,
                                 style: const TextStyle(color: Colors.white),
+                                scrollPadding: EdgeInsets.zero,
                                 decoration: InputDecoration(
                                   labelText: '邮箱',
                                   labelStyle: const TextStyle(color: Colors.white),
@@ -202,6 +202,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                                 controller: _passwordController,
                                 style: const TextStyle(color: Colors.white),
                                 obscureText: true,
+                                scrollPadding: EdgeInsets.zero,
                                 decoration: InputDecoration(
                                   labelText: '密码',
                                   labelStyle: const TextStyle(color: Colors.white),
@@ -282,6 +283,7 @@ class RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
         ],
+        ),
       ),
     );
   }

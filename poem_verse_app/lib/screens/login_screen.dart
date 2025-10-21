@@ -59,12 +59,16 @@ class LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     
     return Scaffold(
       backgroundColor: Colors.transparent,
       resizeToAvoidBottomInset: false,
-      body: Stack(
+      body: GestureDetector(
+        onTap: () {
+          // 点击空白区域收起键盘
+          FocusScope.of(context).unfocus();
+        },
+        child: Stack(
         children: [
           // 渐变背景
           Container(
@@ -86,14 +90,10 @@ class LoginScreenState extends State<LoginScreen> {
           // 主内容
           SafeArea(
             child: Padding(
-              padding: EdgeInsets.only(
-                left: 32,
-                right: 32,
-                top: 32,
-                bottom: keyboardHeight > 0 ? keyboardHeight + 32 : 32,
-              ),
+              padding: const EdgeInsets.all(32),
               child: Center(
                 child: SingleChildScrollView(
+                  physics: const ClampingScrollPhysics(),
                   child: Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
@@ -139,6 +139,7 @@ class LoginScreenState extends State<LoginScreen> {
                         TextField(
                           controller: _emailController,
                           style: const TextStyle(color: Colors.white),
+                          scrollPadding: EdgeInsets.zero,
                           decoration: InputDecoration(
                             labelText: '邮箱',
                             labelStyle: const TextStyle(color: Colors.white),
@@ -166,6 +167,7 @@ class LoginScreenState extends State<LoginScreen> {
                           controller: _passwordController,
                           style: const TextStyle(color: Colors.white),
                           obscureText: true,
+                          scrollPadding: EdgeInsets.zero,
                           decoration: InputDecoration(
                             labelText: '密码',
                             labelStyle: const TextStyle(color: Colors.white),
@@ -271,6 +273,7 @@ class LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ],
+        ),
       ),
     );
   }
