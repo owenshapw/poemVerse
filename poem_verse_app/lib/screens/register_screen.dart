@@ -68,24 +68,23 @@ class RegisterScreenState extends State<RegisterScreen> {
         },
         child: Stack(
         children: [
-          // 更鲜艳的渐变背景
+          // Background - 与 author_works_screen.dart 相同
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color(0xFF6C63FF), // 更鲜艳的紫色
-                  Color(0xFF4834DF), // 更深的蓝紫色
+                  Color(0xFF667eea),
+                  Color(0xFF764ba2),
                 ],
               ),
             ),
           ),
-          // 减少模糊效果
           BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
             child: Container(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withOpacity(0.05),
             ),
           ),
 

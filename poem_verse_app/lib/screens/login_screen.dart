@@ -8,6 +8,7 @@ import 'package:poem_verse_app/screens/register_screen.dart';
 import 'package:poem_verse_app/screens/my_articles_screen.dart';
 import 'package:poem_verse_app/screens/home_screen.dart';
 import 'package:poem_verse_app/utils/text_menu_utils.dart';
+import 'dart:ui';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -70,22 +71,24 @@ class LoginScreenState extends State<LoginScreen> {
         },
         child: Stack(
         children: [
-          // 渐变背景
+          // Background - 与 author_works_screen.dart 相同
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color(0xFF6C63FF),
-                  Color(0xFF4834DF),
+                  Color(0xFF667eea),
+                  Color(0xFF764ba2),
                 ],
               ),
             ),
           ),
-          // 简化的遮罩层
-          Container(
-            color: Colors.black.withOpacity(0.1),
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+            child: Container(
+              color: Colors.white.withOpacity(0.05),
+            ),
           ),
           // 主内容
           SafeArea(

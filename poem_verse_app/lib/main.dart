@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:poem_verse_app/providers/auth_provider.dart';
 import 'package:poem_verse_app/providers/article_provider.dart';
+import 'package:poem_verse_app/screens/splash_screen.dart';
 import 'package:poem_verse_app/screens/home_screen.dart';
 import 'package:poem_verse_app/screens/reset_password_screen.dart';
 import 'package:poem_verse_app/screens/login_screen.dart';
@@ -42,8 +43,9 @@ class PoemVerseApp extends StatelessWidget {
           Locale('en', 'US'), // 英文
         ],
         locale: const Locale('zh', 'CN'), // 设置默认语言为中文
-        home: const HomeScreen(),
+        home: const SplashScreen(),
         routes: {
+          '/home': (context) => const HomeScreen(),
           '/login': (context) => const LoginScreen(),
           '/authorWorks': (context) {
             final args = ModalRoute.of(context)!.settings.arguments as Map?;

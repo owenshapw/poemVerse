@@ -333,7 +333,7 @@ class MyArticlesScreenState extends State<MyArticlesScreen> with WidgetsBindingO
                           );
                           if (confirmed != true) return;
                           authProvider.logout();
-                          navigator.pushNamedAndRemoveUntil('/', (route) => false);
+                          navigator.pushNamedAndRemoveUntil('/home', (route) => false);
                         },
                       ),
                     ],

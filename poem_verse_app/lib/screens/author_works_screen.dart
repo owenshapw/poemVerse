@@ -534,54 +534,58 @@ class _AuthorWorksScreenState extends State<AuthorWorksScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF232946),
-      body: Stack(
-        children: [
-          // Background - 保持与 ArticlePreviewScreen 完全相同
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF667eea),
-                  Color(0xFF764ba2),
-                ],
+      body: Screenshot(
+        controller: _screenshotController,
+        child: Stack(
+          children: [
+            // Background - 保持与 ArticlePreviewScreen 完全相同
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF667eea),
+                    Color(0xFF764ba2),
+                  ],
+                ),
               ),
             ),
-          ),
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-            child: Container(
-              color: Colors.white.withOpacity(0.05),
+            BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+              child: Container(
+                color: Colors.white.withOpacity(0.05),
+              ),
             ),
-          ),// Content
-          SafeArea(
-            child: Column(
-              children: [
-                _buildTopBar(),
-                Expanded(
-                  child: ClipRect(
-                    clipBehavior: Clip.none, // 确保不裁剪阴影
-                    child: _isLoading
-                        ? const Center(
-                            child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                        : _errorMessage != null
-                            ? Center(
-                                child: Text(
-                                  _errorMessage!,
-                                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                                ),
-                              )
-                            : _buildArticleContent(),
+            // Content - 整个屏幕内容
+            SafeArea(
+              child: Column(
+                children: [
+                  _buildTopBar(),
+                  Expanded(
+                    child: ClipRect(
+                      clipBehavior: Clip.none, // 确保不裁剪阴影
+                      child: _isLoading
+                          ? const Center(
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : _errorMessage != null
+                              ? Center(
+                                  child: Text(
+                                    _errorMessage!,
+                                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                                  ),
+                                )
+                              : _buildArticleContent(),
+                    ),
                   ),
-                ),
               ],
+              ),
             ),
-          ),
         ],
+        ),
       ),
     );
   }
@@ -812,15 +816,8 @@ class _AuthorWorksScreenState extends State<AuthorWorksScreen> {
                   ),
                 );
 
-                // 只对当前页面应用Screenshot包装
-                if (index == _currentIndex) {
-                  return Screenshot(
-                    controller: _screenshotController,
-                    child: card,
-                  );
-                } else {
-                  return card;
-                }
+                // 直接返回卡片，不再单独包装Screenshot
+                return card;
               },
             );
       },
