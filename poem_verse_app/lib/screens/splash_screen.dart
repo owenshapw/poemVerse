@@ -233,7 +233,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                                     ),
                                       const SizedBox(width: 12), // 字间距
                                       Text(
-                                        '诗章',
+                                        '章',
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontSize: 36,
