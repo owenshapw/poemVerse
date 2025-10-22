@@ -129,7 +129,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               ),
             ),
           ),
-          // 台灯光线效果 - 从"诗篇"向下照射（先绘制，被文字遮挡）
+          // 台灯光线效果 - 从"诗章"向下照射（先绘制，被文字遮挡）
           AnimatedBuilder(
             animation: _controller,
             builder: (context, child) {
@@ -166,7 +166,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                               children: [
                                                                                                 // APP Logo - 圆角边缘轮廓高光效果
                                 Container(
-                                  width: 120, // 与“诗篇”文字容器宽度一致
+                                  width: 120, // 与“诗章”文字容器宽度一致
                                   margin: const EdgeInsets.only(bottom: 16),
                                   child: Center(
                                     child: Container(
@@ -208,7 +208,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                                     ),
                                   ),
                                 ),
-                                // 诗篇标题 - 与logo完美对齐
+                                // 诗章标题 - 与logo完美对齐
                                 SizedBox(
                                   width: 120, // 与logo宽度一致
                                   child: Row(
@@ -233,7 +233,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                                     ),
                                       const SizedBox(width: 12), // 字间距
                                       Text(
-                                        '篇',
+                                        '诗章',
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontSize: 36,

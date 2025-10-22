@@ -176,26 +176,7 @@ class SupabaseClient:
                 pass
             return None
 
-    def create_comment(self, article_id: str, user_id: str, content: str):
-        """创建评论"""
-        if self.supabase is None:
-            raise RuntimeError("Supabase client not initialized. Call init_app() first.")
-        comment_data = {
-            'id': str(uuid.uuid4()),
-            'article_id': article_id,
-            'user_id': user_id,
-            'content': content,
-            'created_at': datetime.utcnow().isoformat()
-        }
-        result = self.supabase.table('comments').insert(comment_data).execute()
-        return result.data[0] if result.data else None
 
-    def get_comments_by_article(self, article_id: str):
-        """获取文章的所有评论"""
-        if self.supabase is None:
-            raise RuntimeError("Supabase client not initialized. Call init_app() first.")
-        result = self.supabase.table('comments').select('*').eq('article_id', article_id).order('created_at', desc=True).execute()
-        return result.data
 
     def get_recent_articles(self, limit=10, current_user_id=None):
         """
@@ -316,24 +297,7 @@ class SupabaseClient:
             # 其他用户或匿名用户：只返回公开文章
             return [article for article in all_articles if article.get('is_public_visible') is True]
 
-    def delete_comment(self, comment_id):
-        if self.supabase is None:
-            from flask import current_app
-            self.init_app(current_app)
-        if self.supabase is None:
-            raise RuntimeError("Supabase client not initialized")
-        return self.supabase.table('comments').delete().eq('id', comment_id).execute()
 
-    def get_comment_by_id(self, comment_id):
-        if self.supabase is None:
-            from flask import current_app
-            self.init_app(current_app)
-        if self.supabase is None:
-            raise RuntimeError("Supabase client not initialized")
-        result = self.supabase.table('comments').select('*').eq('id', comment_id).execute()
-        if result.data:
-            return result.data[0]
-        return None
 
     def register_with_supabase_auth(self, email: str, password: str, username: Union[str, None] = None):
         """

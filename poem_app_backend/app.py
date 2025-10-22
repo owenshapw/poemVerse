@@ -3,7 +3,6 @@ from flask_cors import CORS
 from config import Config
 from routes.auth import auth_bp
 from routes.articles import articles_bp
-from routes.comments import comments_bp
 from routes.generate import generate_bp
 from routes.likes import likes_bp
 from models.supabase_client import supabase_client
@@ -44,7 +43,6 @@ def create_app():
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(articles_bp, url_prefix='/api')
-    app.register_blueprint(comments_bp, url_prefix='/api')
     app.register_blueprint(generate_bp, url_prefix='/api')
     app.register_blueprint(likes_bp, url_prefix='/api')
     app.register_blueprint(upload_bp)
