@@ -118,7 +118,7 @@ class MyArticlesScreenState extends State<MyArticlesScreen> with WidgetsBindingO
           backgroundColor: Colors.transparent,
           child: ListView.builder(
             controller: _scrollController,
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16), // 减少顶部间距，让第一个卡片上移
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16), // 进一步减少顶部间距，优化显示效果
             itemCount: articles.length,
             itemBuilder: (context, index) => _buildArticleCard(articles[index], articles, index),
           ),
@@ -192,10 +192,10 @@ class MyArticlesScreenState extends State<MyArticlesScreen> with WidgetsBindingO
     final imgOffsetY = _toDouble(article.imageOffsetY);
     // Not scaling images in card view (fill width, keep aspect ratio), so imgScale not used here.
 
-    // 调整卡片尺寸显示4行文本
+    // 调整卡片尺寸，一屏显示三个卡片
     const imageHeight = 180.0; // 图片高度保持180px
-    const textAreaHeight = 150.0; // 增加文字区域高度以4行文本
-    const cardHeight = imageHeight + textAreaHeight; // 总卡片高度 330px
+    const textAreaHeight = 80.0; // 减少文字区域高度，只显示2行正文
+    const cardHeight = imageHeight + textAreaHeight; // 总卡片高度 260px，一屏约可显示3个
 
     Widget imageWidget;
     if (imageUrl.isNotEmpty) {
@@ -226,8 +226,8 @@ class MyArticlesScreenState extends State<MyArticlesScreen> with WidgetsBindingO
         // overlap neighboring cards.
         clipBehavior: Clip.hardEdge,
         margin: EdgeInsets.only(
-          top: index == 0 ? 4 : 8, // 第一个卡片上边距更小
-          bottom: 10,
+          top: index == 0 ? 2 : 6, // 进一步减小卡片间距，让一屏显示更多卡片
+          bottom: 6,
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: SizedBox(
@@ -242,29 +242,63 @@ class MyArticlesScreenState extends State<MyArticlesScreen> with WidgetsBindingO
                   fit: StackFit.expand,
                   children: [
                     imageWidget,
+                    // 渐变遮罩，为标题文字提供背景
                     Container(
                       decoration: const BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [Color.fromRGBO(0, 0, 0, 0.08), Color.fromRGBO(0, 0, 0, 0.0)],
+                          colors: [Color.fromRGBO(0, 0, 0, 0.6), Color.fromRGBO(0, 0, 0, 0.0)],
                           begin: Alignment.bottomCenter,
                           end: Alignment.topCenter,
+                          stops: [0.0, 0.7],
                         ),
+                      ),
+                    ),
+                    // 标题覆盖在图片上
+                    Positioned(
+                      left: 12,
+                      right: 12,
+                      bottom: 12,
+                      child: Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                          shadows: [
+                            Shadow(
+                              offset: Offset(1, 1),
+                              blurRadius: 3,
+                              color: Colors.black54,
+                            ),
+                          ],
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
                 ),
               ),
-              // Bottom half: title + first four lines (no author)
-              Expanded(
+              // Bottom part: 只显示正文前两行
+              SizedBox(
+                height: textAreaHeight,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis), // 保持18字体大小
-                      const SizedBox(height: 8),
-                      Text(firstFour, style: TextStyle(fontSize: 16, color: Colors.grey[800], height: 1.4), maxLines: 4, overflow: TextOverflow.ellipsis), // 增加到4行文本显示
-                      const Spacer(),
+                      Expanded(
+                        child: Text(
+                          firstFour,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[700],
+                            height: 1.3,
+                          ),
+                          maxLines: 2, // 减少到2行
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ],
                   ),
                 ),

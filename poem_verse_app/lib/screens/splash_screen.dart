@@ -94,17 +94,17 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     return Scaffold(
       body: Stack(
         children: [
-          // 宝石般透亮的渐变背景
+          // 深邃鲜艳的渐变背景
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color(0xFF667eea),
-                  Color(0xFF7b68ee),
-                  Color(0xFF9370db),
-                  Color(0xFF764ba2),
+                  Color(0xFF5A7AFF), // 更深更亮的蓝色
+                  Color(0xFF6B5BFF), // 更鲜艳的蓝紫色
+                  Color(0xFF8A5AFF), // 更深的紫色
+                  Color(0xFF6B4BA5), // 更深的紫蓝色
                 ],
                 stops: [0.0, 0.3, 0.7, 1.0],
               ),
@@ -112,7 +112,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           ),
           // 轻微的遮罩层，保持透亮感
           Container(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: Colors.black.withValues(alpha: 0.05), // 减少遮罩，让背景更亮
           ),
           // 整体的宝石光泽叠加
           Container(
@@ -149,11 +149,11 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           SafeArea(
             child: Column(
               children: [
-                // 上半部分 - 标题区域
+                // 上半部分 - Logo和标题区域
                 Expanded(
                   flex: 45,
                   child: Align(
-                    alignment: const Alignment(0.0, 0.33), // 中心偏下1/3位置
+                    alignment: const Alignment(-0.1, 0.4), // 向左下移动，让logo位于光柱内
                     child: AnimatedBuilder(
                       animation: _controller,
                       builder: (context, child) {
@@ -161,23 +161,98 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                           opacity: _fadeAnimation.value,
                           child: Transform.scale(
                             scale: _scaleAnimation.value,
-                            child: Text(
-                              '诗篇',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 68,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 24,
-                                fontFamily: 'FZZhaoGYJW-R',
-                                height: 1.2,
-                                shadows: [
-                                  Shadow(
-                                    color: Colors.black.withValues(alpha: 0.4),
-                                    offset: const Offset(1, 1),
-                                    blurRadius: 4,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                                                                                // APP Logo - 圆角边缘轮廓高光效果
+                                Container(
+                                  width: 120, // 与“诗篇”文字容器宽度一致
+                                  margin: const EdgeInsets.only(bottom: 16),
+                                  child: Center(
+                                    child: Container(
+                                      width: 101, // 更细的边框，0.5px边框宽度
+                                      height: 101,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(18.5), // 对应的圆角
+                                        gradient: SweepGradient( // 只在特定区域显示高光
+                                          center: Alignment.center,
+                                          startAngle: 0, // 从右边开始(0°)
+                                          endAngle: 6.28, // 完整一圈
+                                          colors: [
+                                            Colors.transparent, // 0° 右边 - 无高光
+                                            Colors.white.withValues(alpha: 0.4), // 45° 右下角高光开始
+                                            Colors.white.withValues(alpha: 0.7), // 67.5° 右下角高光最亮
+                                            Colors.white.withValues(alpha: 0.4), // 90° 下边中心 - 右下高光结束
+                                            Colors.transparent, // 135° 左下角 - 无高光
+                                            Colors.transparent, // 180° 左边 - 无高光
+                                            Colors.white.withValues(alpha: 0.4), // 225° 左上角高光开始
+                                            Colors.white.withValues(alpha: 0.7), // 247.5° 左上角高光最亮
+                                            Colors.white.withValues(alpha: 0.4), // 270° 上边中心 - 左上高光结束
+                                            Colors.transparent, // 315° 右上角 - 无高光
+                                          ],
+                                          stops: const [0.0, 0.125, 0.1875, 0.25, 0.375, 0.5, 0.625, 0.6875, 0.75, 0.875],
+                                        ),
+                                            ),
+                                      child: Container(
+                                        margin: const EdgeInsets.all(0.5), // 0.5px超细边框宽度
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(18),
+                                          child: Image.asset(
+                                            'assets/images/poemlogo.png',
+                                            width: 100,
+                                            height: 100,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                ],
-                              ),
+                                ),
+                                // 诗篇标题 - 与logo完美对齐
+                                SizedBox(
+                                  width: 120, // 与logo宽度一致
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        '诗',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 36,
+                                          fontWeight: FontWeight.w900,
+                                          fontFamily: 'FZZhaoGYJW-R',
+                                          height: 1.0,
+                                          shadows: [
+                                            Shadow(
+                                              color: Colors.black.withValues(alpha: 0.4),
+                                              offset: const Offset(1, 1),
+                                              blurRadius: 4,
+                                            ),
+                                          ],
+                                        ),
+                                    ),
+                                      const SizedBox(width: 12), // 字间距
+                                      Text(
+                                        '篇',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 36,
+                                          fontWeight: FontWeight.w900,
+                                          fontFamily: 'FZZhaoGYJW-R',
+                                          height: 1.0,
+                                          shadows: [
+                                            Shadow(
+                                              color: Colors.black.withValues(alpha: 0.4),
+                                              offset: const Offset(1, 1),
+                                              blurRadius: 4,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         );
