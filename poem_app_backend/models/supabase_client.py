@@ -9,12 +9,21 @@ import re
 class SupabaseClient:
     def __init__(self):
         self.supabase: Optional[Client] = None
+        self.service_supabase: Optional[Client] = None  # Service role client for bypassing RLS
 
     def init_app(self, app):
+        # 主客户端（使用anon key）
         self.supabase = create_client(
             app.config['SUPABASE_URL'],
             app.config['SUPABASE_KEY']
         )
+        
+        # 服务端客户端（使用service role key，可以绕过RLS）
+        if app.config.get('SUPABASE_SERVICE_KEY'):
+            self.service_supabase = create_client(
+                app.config['SUPABASE_URL'],
+                app.config['SUPABASE_SERVICE_KEY']
+            )
 
     def get_user_by_email(self, email: str):
         if self.supabase is None:
@@ -298,6 +307,46 @@ class SupabaseClient:
             return [article for article in all_articles if article.get('is_public_visible') is True]
 
 
+
+    def update_user_password_via_auth(self, user_id: str, new_password: str):
+        """通过Supabase Auth Admin API更新密码（推荐方法）"""
+        try:
+            # 使用Admin API直接更新Supabase Auth的密码
+            response = self.supabase.auth.admin.update_user_by_id(
+                user_id, 
+                {"password": new_password}
+            )
+            return response is not None
+        except Exception as e:
+            print(f"Error updating password via auth: {str(e)}")
+            # 如果Auth API失败，尝试直接更新users表
+            return self.update_user_password_hash(user_id, new_password)
+    
+    def update_user_password_hash(self, user_id: str, new_password: str):
+        """直接更新users表中的password_hash（绕过RLS）"""
+        try:
+            import bcrypt
+            # 生成密码哈希
+            password_hash = bcrypt.hashpw(
+                new_password.encode('utf-8'),
+                bcrypt.gensalt()
+            ).decode('utf-8')
+            
+            # 优先使用service role客户端（可以绕过RLS）
+            client_to_use = self.service_supabase if self.service_supabase else self.supabase
+            
+            result = client_to_use.table('users').update({
+                'password_hash': password_hash,
+                'updated_at': datetime.utcnow().isoformat()
+            }).eq('id', user_id).execute()
+            
+            print(f"Password update result: {result.data if hasattr(result, 'data') else 'No data'}")
+            return result.data is not None and len(result.data) > 0
+        except Exception as e:
+            print(f"Error updating password hash: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return False
 
     def register_with_supabase_auth(self, email: str, password: str, username: Union[str, None] = None):
         """

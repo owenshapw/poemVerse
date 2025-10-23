@@ -227,26 +227,53 @@ class LoginScreenState extends State<LoginScreen> {
                                   ),
                               ),
                         ),
-                        const SizedBox(height: 16),
-                        // 忘记密码链接
-                        TextButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
-                            );
-                          },
-                          child: const Text(
-                            '忘记密码？',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w400,
-                              decoration: TextDecoration.underline,
+                        const SizedBox(height: 24),
+                        // 忘记密码链接 - 优雅设计
+                        Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            color: Colors.white.withOpacity(0.1),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.2),
+                              width: 1,
+                            ),
+                          ),
+                          child: TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
+                              );
+                            },
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Icon(
+                                  Icons.help_outline_rounded,
+                                  size: 16,
+                                  color: Colors.white70,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  '忘记密码？',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w400,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 16),
                         TextButton(
                           onPressed: () {
                             Navigator.push(

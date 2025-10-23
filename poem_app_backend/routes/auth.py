@@ -229,17 +229,12 @@ def reset_password():
         except jwt.InvalidTokenError:
             return jsonify({'error': '无效的重置链接'}), 400
 
-        # 更新密码
-        password_hash = bcrypt.hashpw(
-            new_password.encode('utf-8'),
-            bcrypt.gensalt()).decode('utf-8')
-        if not supabase_client.supabase:
-            return jsonify({'error': 'Supabase client 未初始化'}), 500
-        result = supabase_client.supabase.table('users').update(
-            {'password_hash': password_hash}).eq('id', user_id).execute()
-
-        if not getattr(result, 'data', None):
-            return jsonify({'error': '密码更新失败'}), 500
+        # 更新密码 - 优先使用Auth API，备用直接更新
+        success = supabase_client.update_user_password_via_auth(user_id, new_password)
+        
+        if not success:
+            return jsonify({'error': '密码更新失败，请检查用户是否存在'}), 500
+            
         return jsonify({'message': '密码重置成功'}), 200
 
     except Exception as e:
@@ -247,3 +242,13 @@ def reset_password():
 
 
 # 重置密码页面路由已移动到 app.py 中，作为主路由处理
+
+@auth_bp.route('/test-api', methods=['POST', 'GET'])
+def test_api():
+    """测试API端点（调试用）"""
+    return jsonify({
+        'message': 'API正常工作',
+        'method': request.method,
+        'path': request.path,
+        'data': request.get_json() if request.method == 'POST' else None
+    }), 200

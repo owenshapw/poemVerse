@@ -9,7 +9,8 @@ class Config:
     
     # Supabase配置
     SUPABASE_URL = os.environ.get('SUPABASE_URL')
-    SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
+    SUPABASE_KEY = os.environ.get('SUPABASE_KEY')  # anon key
+    SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_KEY')  # service role key（用于绕过RLS）
     
     # 邮件配置
     EMAIL_USERNAME = os.environ.get('EMAIL_USERNAME')

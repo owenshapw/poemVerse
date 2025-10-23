@@ -1,4 +1,4 @@
-from flask import Flask, send_from_directory, current_app, render_template, request
+from flask import Flask, send_from_directory, current_app, render_template, request, jsonify
 import jwt
 from datetime import datetime
 from flask_cors import CORS
@@ -34,12 +34,13 @@ def create_app():
     except Exception as e:
         raise RuntimeError(f"Supabase 初始化失败: {e}")
     
-    # 启用CORS - 允许Flutter前端访问
+    # 启用CORS - 允许前端访问
     CORS(app, resources={
         r"/api/*": {
-            "origins": ["http://localhost:3000", "http://127.0.0.1:3000", "*"],
+            "origins": ["*"],
             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization"]
+            "allow_headers": ["Content-Type", "Authorization"],
+            "supports_credentials": True
         }
     })
 
@@ -119,6 +120,27 @@ def create_app():
         """测试重置页面显示（用于调试）"""
         test_token = "test-token-12345"
         return render_template('reset-password.html', token=test_token)
+    
+    @app.route('/debug/routes', methods=['GET'])
+    def list_routes():
+        """显示所有可用路由（调试用）"""
+        routes = []
+        for rule in app.url_map.iter_rules():
+            methods = ','.join(rule.methods - {'HEAD', 'OPTIONS'})
+            routes.append(f"{methods} {rule.rule}")
+        return '<br>'.join(sorted(routes))
+    
+    @app.errorhandler(405)
+    def method_not_allowed(error):
+        """处理405错误"""
+        print(f"405 Error: {request.method} {request.path}")
+        print(f"Available methods for this endpoint: {error.description}")
+        return jsonify({
+            'error': 'Method Not Allowed',
+            'method': request.method,
+            'path': request.path,
+            'message': '请求的HTTP方法不被允许'
+        }), 405
     
     return app
 
