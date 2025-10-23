@@ -65,6 +65,11 @@ def create_app():
         """提供上传文件的访问"""
         return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)
     
+    @app.route('/static/<filename>')
+    def static_file(filename):
+        """提供静态文件的访问"""
+        return send_from_directory('static', filename)
+    
     @app.route('/.well-known/apple-app-site-association')
     def apple_app_site_association():
         """提供iOS Universal Links验证文件"""
