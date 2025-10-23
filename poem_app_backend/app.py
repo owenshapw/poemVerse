@@ -80,9 +80,18 @@ def create_app():
         try:
             token = request.args.get('token')
             
+            # 调试信息
+            print(f"Reset password page accessed")
+            print(f"Full URL: {request.url}")
+            print(f"Query args: {request.args}")
+            print(f"Token received: {'Yes' if token else 'No'}")
+            if token:
+                print(f"Token length: {len(token)}")
+                print(f"Token preview: {token[:20]}...")
+            
             if not token:
                 return render_template('reset-password.html', 
-                                     error='缺少重置令牌，请重新申请密码重置。'), 400
+                                     error=f'缺少重置令牌。请求URL: {request.url}'), 400
             
             # 验证token是否有效
             try:
@@ -101,8 +110,15 @@ def create_app():
                                      error='无效的重置链接，请重新申请密码重置。'), 400
                 
         except Exception as e:
+            print(f"Error in reset password page: {str(e)}")
             return render_template('reset-password.html', 
                                  error=f'系统错误：{str(e)}'), 500
+    
+    @app.route('/test-reset', methods=['GET'])
+    def test_reset_page():
+        """测试重置页面显示（用于调试）"""
+        test_token = "test-token-12345"
+        return render_template('reset-password.html', token=test_token)
     
     return app
 

@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify, current_app, render_template
+from urllib.parse import quote
 from models.supabase_client import supabase_client
 import bcrypt
 import jwt
@@ -127,8 +128,9 @@ def forgot_password():
         if not base_url:
             base_url = request.host_url.rstrip('/')
         
-        # 发送重置邮件 - 使用Universal Links格式
-        reset_url = f"{base_url}/reset-password?token={reset_token}"
+        # 发送重置邮件 - 使用Universal Links格式，对token进行URL编码
+        encoded_token = quote(reset_token, safe='')
+        reset_url = f"{base_url}/reset-password?token={encoded_token}"
         subject = "诗篇 - 密码重置"
         
         # HTML邮件模板
