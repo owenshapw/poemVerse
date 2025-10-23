@@ -41,7 +41,10 @@ def create_app():
         }
     })
 
+    # 注册认证路由 - API路由
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    # 注册认证路由 - 直接路由（用于Universal Links）
+    app.register_blueprint(auth_bp, url_prefix='')
     app.register_blueprint(articles_bp, url_prefix='/api')
     app.register_blueprint(generate_bp, url_prefix='/api')
     app.register_blueprint(likes_bp, url_prefix='/api')
@@ -60,6 +63,16 @@ def create_app():
     def uploaded_file(filename):
         """提供上传文件的访问"""
         return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)
+    
+    @app.route('/.well-known/apple-app-site-association')
+    def apple_app_site_association():
+        """提供iOS Universal Links验证文件"""
+        return send_from_directory('static', 'apple-app-site-association', mimetype='application/json')
+    
+    @app.route('/.well-known/assetlinks.json')
+    def assetlinks():
+        """提供Android App Links验证文件"""
+        return send_from_directory('static', 'assetlinks.json', mimetype='application/json')
     
     return app
 

@@ -70,6 +70,20 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> forgotPassword(String email) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await ApiService.forgotPassword(email);
+      return true;
+    } catch (e) {
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   void logout() {
     _token = null;
     notifyListeners();

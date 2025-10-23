@@ -3,17 +3,23 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import current_app
 
-def send_email(to_email: str, subject: str, body: str):
-    """发送邮件"""
+def send_email(to_email: str, subject: str, text_body: str, html_body: str = None):
+    """发送邮件（支持HTML和纯文本）"""
     try:
         # 创建邮件对象
-        msg = MIMEMultipart()
+        msg = MIMEMultipart('alternative')
         msg['From'] = current_app.config['EMAIL_USERNAME']
         msg['To'] = to_email
         msg['Subject'] = subject
         
-        # 添加邮件正文
-        msg.attach(MIMEText(body, 'plain', 'utf-8'))
+        # 添加纯文本版本
+        text_part = MIMEText(text_body, 'plain', 'utf-8')
+        msg.attach(text_part)
+        
+        # 如果提供了HTML版本，添加HTML部分
+        if html_body:
+            html_part = MIMEText(html_body, 'html', 'utf-8')
+            msg.attach(html_part)
         
         # 连接SMTP服务器
         server = smtplib.SMTP(current_app.config['EMAIL_SERVER'], current_app.config['EMAIL_PORT'])

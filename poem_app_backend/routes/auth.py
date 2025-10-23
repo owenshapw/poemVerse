@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, render_template
 from models.supabase_client import supabase_client
 import bcrypt
 import jwt
@@ -121,13 +121,70 @@ def forgot_password():
             algorithm='HS256'
         )
 
-        # 发送重置邮件
-        reset_url = f"poemverse://reset-password?token={reset_token}"
+        # 获取当前域名（用于生成重置链接）
+        # 优先使用环境变量，否则使用request的host
+        base_url = current_app.config.get('BASE_URL')
+        if not base_url:
+            base_url = request.host_url.rstrip('/')
+        
+        # 发送重置邮件 - 使用Universal Links格式
+        reset_url = f"{base_url}/reset-password?token={reset_token}"
         subject = "诗篇 - 密码重置"
-        body = f"""
+        
+        # HTML邮件模板
+        html_body = f"""
+        <!DOCTYPE html>
+        <html>
+        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px; text-align: center; color: white; border-radius: 10px 10px 0 0;">
+                <h1 style="margin: 0; font-size: 28px;">📝 诗篇</h1>
+                <h2 style="margin: 10px 0 0; font-weight: normal;">重置密码</h2>
+            </div>
+            
+            <div style="padding: 40px 20px; border: 1px solid #e1e5e9; border-top: none; border-radius: 0 0 10px 10px;">
+                <p>您好，</p>
+                <p>我们收到了您的密码重置请求。点击下面的按钮重置您的密码：</p>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{reset_url}" 
+                       style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                              color: white; 
+                              padding: 15px 30px; 
+                              text-decoration: none; 
+                              border-radius: 25px; 
+                              font-weight: bold; 
+                              font-size: 16px;
+                              display: inline-block;">
+                        🔑 重置密码
+                    </a>
+                </div>
+                
+                <p style="font-size: 14px; color: #666;">如果按钮无法点击，请复制以下链接到浏览器：<br>
+                <code style="background: #f8f9fa; padding: 5px; border-radius: 3px; font-size: 12px; word-break: break-all;">{reset_url}</code></p>
+                
+                <p style="font-size: 12px; color: #999; margin-top: 20px;">此链接将在1小时后失效。如果您没有申请密码重置，请忽略此邮件。</p>
+                
+                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+                
+                <div style="text-align: center;">
+                    <p style="font-size: 12px; color: #666;">下载诗篇应用获得更好体验：</p>
+                    <a href="https://apps.apple.com/app/poemverse" style="margin: 0 10px; color: #667eea; font-size: 12px;">App Store</a>
+                    <a href="https://play.google.com/store/apps/details?id=com.owensha.poemverse" style="margin: 0 10px; color: #667eea; font-size: 12px;">Google Play</a>
+                </div>
+            </div>
+            
+            <div style="text-align: center; padding: 20px; font-size: 11px; color: #999;">
+                © 2024 诗篇 PoemVerse. All rights reserved.
+            </div>
+        </body>
+        </html>
+        """
+        
+        # 纯文本备用版本
+        text_body = f"""
         您好，
 
-        您请求重置密码。请点击以下链接重置密码：
+        您请求重置密码。请访问以下链接重置密码：
 
         {reset_url}
 
@@ -138,7 +195,8 @@ def forgot_password():
         诗篇团队
         """
 
-        send_email(email, subject, body)
+        # 发送HTML邮件
+        send_email(email, subject, text_body, html_body)
 
         return jsonify({'message': '重置密码邮件已发送'}), 200
 
@@ -184,3 +242,34 @@ def reset_password():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@auth_bp.route('/reset-password', methods=['GET'])
+def reset_password_page():
+    """显示重置密码页面"""
+    try:
+        token = request.args.get('token')
+        
+        if not token:
+            return render_template('reset-password.html', 
+                                 error='缺少重置令牌，请重新申请密码重置。'), 400
+        
+        # 验证token是否有效（可选，也可以在提交时验证）
+        try:
+            jwt.decode(
+                token,
+                current_app.config['SECRET_KEY'],
+                algorithms=['HS256']
+            )
+            # Token有效，显示重置页面
+            return render_template('reset-password.html', token=token)
+        except jwt.ExpiredSignatureError:
+            return render_template('reset-password.html', 
+                                 error='重置链接已过期，请重新申请密码重置。'), 400
+        except jwt.InvalidTokenError:
+            return render_template('reset-password.html', 
+                                 error='无效的重置链接，请重新申请密码重置。'), 400
+            
+    except Exception as e:
+        return render_template('reset-password.html', 
+                             error=f'系统错误：{str(e)}'), 500

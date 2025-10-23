@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["TEAM_ID.com.owensha.poemverse"],
+        "components": [
+          {
+            "/": "/reset-password*",
+            "comment": "Password reset links"
+          }
+        ]
+      }
+    ]
+  }
+}

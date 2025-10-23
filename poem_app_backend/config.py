@@ -24,3 +24,6 @@ class Config:
     # 图片生成配置
     IMAGE_WIDTH = 800
     IMAGE_HEIGHT = 1200 
+    
+    # Universal Links 配置
+    BASE_URL = os.environ.get('BASE_URL')  # 例如: https://your-domain.com 

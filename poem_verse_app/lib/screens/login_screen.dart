@@ -7,6 +7,7 @@ import 'package:poem_verse_app/providers/auth_provider.dart';
 import 'package:poem_verse_app/screens/register_screen.dart';
 import 'package:poem_verse_app/screens/my_articles_screen.dart';
 import 'package:poem_verse_app/screens/home_screen.dart';
+import 'package:poem_verse_app/screens/forgot_password_screen.dart';
 import 'package:poem_verse_app/utils/text_menu_utils.dart';
 import 'dart:ui';
 
@@ -226,7 +227,26 @@ class LoginScreenState extends State<LoginScreen> {
                                   ),
                               ),
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 16),
+                        // 忘记密码链接
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
+                            );
+                          },
+                          child: const Text(
+                            '忘记密码？',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w400,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
                         TextButton(
                           onPressed: () {
                             Navigator.push(
