@@ -244,32 +244,4 @@ def reset_password():
         return jsonify({'error': str(e)}), 500
 
 
-@auth_bp.route('/reset-password', methods=['GET'])
-def reset_password_page():
-    """显示重置密码页面"""
-    try:
-        token = request.args.get('token')
-        
-        if not token:
-            return render_template('reset-password.html', 
-                                 error='缺少重置令牌，请重新申请密码重置。'), 400
-        
-        # 验证token是否有效（可选，也可以在提交时验证）
-        try:
-            jwt.decode(
-                token,
-                current_app.config['SECRET_KEY'],
-                algorithms=['HS256']
-            )
-            # Token有效，显示重置页面
-            return render_template('reset-password.html', token=token)
-        except jwt.ExpiredSignatureError:
-            return render_template('reset-password.html', 
-                                 error='重置链接已过期，请重新申请密码重置。'), 400
-        except jwt.InvalidTokenError:
-            return render_template('reset-password.html', 
-                                 error='无效的重置链接，请重新申请密码重置。'), 400
-            
-    except Exception as e:
-        return render_template('reset-password.html', 
-                             error=f'系统错误：{str(e)}'), 500
+# 重置密码页面路由已移动到 app.py 中，作为主路由处理

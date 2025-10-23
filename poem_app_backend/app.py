@@ -1,4 +1,6 @@
-from flask import Flask, send_from_directory, current_app
+from flask import Flask, send_from_directory, current_app, render_template, request
+import jwt
+from datetime import datetime
 from flask_cors import CORS
 from config import Config
 from routes.auth import auth_bp
@@ -41,10 +43,8 @@ def create_app():
         }
     })
 
-    # 注册认证路由 - API路由
+    # 注册认证路由
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
-    # 注册认证路由 - 直接路由（用于Universal Links）
-    app.register_blueprint(auth_bp, url_prefix='')
     app.register_blueprint(articles_bp, url_prefix='/api')
     app.register_blueprint(generate_bp, url_prefix='/api')
     app.register_blueprint(likes_bp, url_prefix='/api')
@@ -73,6 +73,36 @@ def create_app():
     def assetlinks():
         """提供Android App Links验证文件"""
         return send_from_directory('static', 'assetlinks.json', mimetype='application/json')
+    
+    @app.route('/reset-password', methods=['GET'])
+    def reset_password_page():
+        """显示重置密码页面（Universal Links入口）"""
+        try:
+            token = request.args.get('token')
+            
+            if not token:
+                return render_template('reset-password.html', 
+                                     error='缺少重置令牌，请重新申请密码重置。'), 400
+            
+            # 验证token是否有效
+            try:
+                jwt.decode(
+                    token,
+                    current_app.config['SECRET_KEY'],
+                    algorithms=['HS256']
+                )
+                # Token有效，显示重置页面
+                return render_template('reset-password.html', token=token)
+            except jwt.ExpiredSignatureError:
+                return render_template('reset-password.html', 
+                                     error='重置链接已过期，请重新申请密码重置。'), 400
+            except jwt.InvalidTokenError:
+                return render_template('reset-password.html', 
+                                     error='无效的重置链接，请重新申请密码重置。'), 400
+                
+        except Exception as e:
+            return render_template('reset-password.html', 
+                                 error=f'系统错误：{str(e)}'), 500
     
     return app
 

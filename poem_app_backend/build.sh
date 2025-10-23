@@ -5,6 +5,8 @@ echo "🚀 开始构建 PoemVerse 后端服务..."
 
 # 创建必要的目录
 mkdir -p uploads
+mkdir -p static
+mkdir -p templates
 
 # 设置环境变量
 export PYTHONPATH="${PYTHONPATH}:$(pwd)"
