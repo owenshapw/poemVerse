@@ -215,7 +215,7 @@ class NetworkImageWithDio extends StatelessWidget {
         height: height,
         color: Colors.grey.shade200,
         alignment: Alignment.center,
-        child: Icon(Icons.image_not_supported, color: Colors.grey, size: 28),
+        child: const Icon(Icons.image_not_supported, color: Colors.grey, size: 28),
       );
     }
     return Image.network(
@@ -246,7 +246,7 @@ class NetworkImageWithDio extends StatelessWidget {
           height: height,
           color: Colors.grey.shade200,
           alignment: Alignment.center,
-          child: Icon(Icons.broken_image, color: Colors.grey, size: 28),
+          child: const Icon(Icons.broken_image, color: Colors.grey, size: 28),
         );
       },
     );

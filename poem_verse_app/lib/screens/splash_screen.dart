@@ -320,21 +320,23 @@ class DeskLampPainter extends CustomPainter {
     final paint = Paint();
     
     // 光源位置（在左上角外侧）
-    final lightSourceX = -size.width * 0.35; // 在左上角外侧
-    final lightSourceY = -size.height * 0.25; // 在左上角外侧
+    const lightSourceX = -0.35; // 在左上角外侧比例
+    const lightSourceY = -0.25; // 在左上角外侧比例
+    final actualLightSourceX = size.width * lightSourceX;
+    final actualLightSourceY = size.height * lightSourceY;
     
     // 20度扇形参数，保持上边缘不动，下边缘上移
-    final fanAngle = math.pi / 7; // 20度扇形角度（缩小张角）
+    const fanAngle = math.pi / 7; // 20度扇形角度（缩小张角）
     final fanRadius = math.sqrt(size.width * size.width + size.height * size.height) * 1.4; // 保持半径不变
-    final startAngle = 45 * math.pi / 180; // 上边缘（45度）
+    const startAngle = 45 * math.pi / 180; // 上边缘（45度）
     // 下边缘从85度上移到75度，张角变为20度
     
     // 创建扇形路径
     final fanPath = Path();
-    fanPath.moveTo(lightSourceX, lightSourceY); // 从光源开始
+    fanPath.moveTo(actualLightSourceX, actualLightSourceY); // 从光源开始
     fanPath.arcTo(
       Rect.fromCircle(
-        center: Offset(lightSourceX, lightSourceY),
+        center: Offset(actualLightSourceX, actualLightSourceY),
         radius: fanRadius,
       ),
       startAngle,
@@ -345,7 +347,7 @@ class DeskLampPainter extends CustomPainter {
     
     // 创建扇形渐变效果（从光源中心辐射）
     final gradient = ui.Gradient.radial(
-      Offset(lightSourceX, lightSourceY), 
+      Offset(actualLightSourceX, actualLightSourceY), 
       fanRadius,
       [
         Colors.white.withValues(alpha: 0.18), // 左上角光源处

@@ -68,7 +68,7 @@ class ArticlePreviewScreenState extends State<ArticlePreviewScreen> {
       if (token.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('请先登录')),
+            const SnackBar(content: Text('请先登录')),
           );
         }
         setState(() { _isPublishing = false; });
@@ -78,7 +78,7 @@ class ArticlePreviewScreenState extends State<ArticlePreviewScreen> {
       if (widget.isEdit && (widget.articleId == null || widget.articleId!.isEmpty)) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('编辑模式下缺少文章ID')),
+            const SnackBar(content: Text('编辑模式下缺少文章ID')),
           );
         }
         setState(() { _isPublishing = false; });
@@ -152,7 +152,7 @@ class ArticlePreviewScreenState extends State<ArticlePreviewScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('发布失败')),
+          const SnackBar(content: Text('发布失败')),
         );
       }
     } finally {

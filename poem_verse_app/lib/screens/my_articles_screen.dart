@@ -130,9 +130,9 @@ class MyArticlesScreenState extends State<MyArticlesScreen> with WidgetsBindingO
   Widget _buildErrorState() {
     return Center(
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(Icons.error_outline, color: Colors.black54, size: 64),
+        const Icon(Icons.error_outline, color: Colors.black54, size: 64),
         const SizedBox(height: 16),
-        Text('加载失败', style: TextStyle(color: Colors.black87, fontSize: 18)),
+        const Text('加载失败', style: TextStyle(color: Colors.black87, fontSize: 18)),
         const SizedBox(height: 16),
         ElevatedButton(onPressed: () => _loadMyArticles(), child: const Text('重试')),
       ]),
@@ -151,7 +151,7 @@ class MyArticlesScreenState extends State<MyArticlesScreen> with WidgetsBindingO
         ElevatedButton.icon(
           onPressed: () async {
             final navigator = Navigator.of(context);
-            final result = await navigator.push(MaterialPageRoute(builder: (ctx) => CreateArticleScreen()));
+            final result = await navigator.push(MaterialPageRoute(builder: (ctx) => const CreateArticleScreen()));
             if (!mounted) return;
             if (result != null) {
               if (result is Map && result['action'] == 'published') {
@@ -322,60 +322,84 @@ class MyArticlesScreenState extends State<MyArticlesScreen> with WidgetsBindingO
     return Scaffold(
       backgroundColor: const Color(0xFFF8F6FF),
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Row(
-                children: [
-                  Expanded(child: Text('我的诗篇', style: titleStyle)),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
+            Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: Row(
                     children: [
-                      IconButton(
-                        icon: Icon(Icons.add_circle_outline, size: 22, color: Colors.grey[800]),
-                        tooltip: '发布诗篇',
-                        onPressed: () async {
-                          final navigator = Navigator.of(context);
-                          final result = await navigator.push(MaterialPageRoute(builder: (ctx) => CreateArticleScreen()));
-                          if (!mounted) return;
-                          if (result != null) {
-                            if (result is Map && result['action'] == 'published') {
-                              await _handlePublishedArticle(result['articleInfo']);
-                            } else if (result == 'published' || result == true) {
-                              await _loadMyArticles(clearCache: true);
-                            }
-                          }
-                        },
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.logout_outlined, size: 22, color: Colors.grey[800]),
-                        tooltip: '退出登录',
-                        onPressed: () async {
-                          final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                          final navigator = Navigator.of(context);
-                          final confirmed = await showDialog<bool>(
-                            context: context,
-                            builder: (c) => AlertDialog(
-                              title: const Text('确认退出'),
-                              content: const Text('确定要退出登录吗？'),
-                              actions: [
-                                TextButton(onPressed: () => Navigator.of(c).pop(false), child: const Text('取消')),
-                                TextButton(onPressed: () => Navigator.of(c).pop(true), child: const Text('退出')),
-                              ],
-                            ),
-                          );
-                          if (confirmed != true) return;
-                          authProvider.logout();
-                          navigator.pushNamedAndRemoveUntil('/home', (route) => false);
-                        },
+                      Expanded(child: Text('我的诗篇', style: titleStyle)),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.add_circle_outline, size: 22, color: Colors.grey[800]),
+                            tooltip: '发布诗篇',
+                            onPressed: () async {
+                              final navigator = Navigator.of(context);
+                              final result = await navigator.push(MaterialPageRoute(builder: (ctx) => const CreateArticleScreen()));
+                              if (!mounted) return;
+                              if (result != null) {
+                                if (result is Map && result['action'] == 'published') {
+                                  await _handlePublishedArticle(result['articleInfo']);
+                                } else if (result == 'published' || result == true) {
+                                  await _loadMyArticles(clearCache: true);
+                                }
+                              }
+                            },
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.logout_outlined, size: 22, color: Colors.grey[800]),
+                            tooltip: '退出登录',
+                            onPressed: () async {
+                              final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                              final navigator = Navigator.of(context);
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (c) => AlertDialog(
+                                  title: const Text('确认退出'),
+                                  content: const Text('确定要退出登录吗？'),
+                                  actions: [
+                                    TextButton(onPressed: () => Navigator.of(c).pop(false), child: const Text('取消')),
+                                    TextButton(onPressed: () => Navigator.of(c).pop(true), child: const Text('退出')),
+                                  ],
+                                ),
+                              );
+                              if (confirmed != true) return;
+                              authProvider.logout();
+                              navigator.pushNamedAndRemoveUntil('/home', (route) => false);
+                            },
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
+                ),
+                Expanded(child: _buildContent()),
+              ],
+            ),
+            // 单击顶部区域返回顶部
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 120, // 为右侧按钮留出空间
+              height: 40,
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: () {
+                  _scrollController.animateTo(
+                    0.0,
+                    duration: const Duration(milliseconds: 600),
+                    curve: Curves.easeInOut,
+                  );
+                },
+                child: Container(
+                  color: Colors.transparent,
+                ),
               ),
             ),
-            Expanded(child: _buildContent()),
           ],
         ),
       ),

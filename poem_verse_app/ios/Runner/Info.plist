@@ -28,6 +28,8 @@
     <true/>
     <key>NSPhotoLibraryAddUsageDescription</key>
     <string>This app needs permission to save poem images and artwork to your photo library.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>This app needs permission to access your photo library to select images for poem creation and editing.</string>
     <key>UIApplicationSupportsIndirectInputEvents</key>
     <true/>
     <key>UILaunchStoryboardName</key>
@@ -58,5 +60,7 @@
             </array>
         </dict>
     </array>
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
 </dict>
 </plist>

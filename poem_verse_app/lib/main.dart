@@ -106,6 +106,7 @@ class PoemVerseAppState extends State<PoemVerseApp> {
       child: MaterialApp(
         navigatorKey: _navigatorKey,
         title: 'PoemVerse',
+        debugShowCheckedModeBanner: false, // 隐藏DEBUG标识
         theme: ThemeData(
           primarySwatch: Colors.blue,
         ),

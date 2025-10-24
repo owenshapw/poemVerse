@@ -82,7 +82,7 @@ class _InteractiveImagePreviewState extends State<InteractiveImagePreview> with 
       tx = 0.0;
     }
 
-    final scale = 1.0; // scaling disabled
+    const scale = 1.0; // scaling disabled
     _debounceTimer?.cancel();
     _debounceTimer = Timer(_debounceDuration, () {
       if (!mounted) {

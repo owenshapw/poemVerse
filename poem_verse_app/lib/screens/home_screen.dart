@@ -78,67 +78,91 @@ class _HomeScreenState extends State<HomeScreen> {
             color: Colors.black.withOpacity(0.15),
           ),
           SafeArea(
-            child: Consumer<ArticleProvider>(
-              builder: (context, articleProvider, child) {
-                if (articleProvider.isLoading) {
-                  return Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                          Theme.of(context).primaryColor),
-                    ),
-                  );
-                }
-
-                if (articleProvider.errorMessage != null) {
-                  return Center(
-                    child: Text(
-                      articleProvider.errorMessage!,
-                      style: const TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-                  );
-                }
-
-                if (articleProvider.articles.isEmpty && articleProvider.topArticle == null) {
-                  return const Center(
-                    child: Text(
-                      'No articles found.',
-                      style: TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.only(top: 48),
-                  // 性能优化
-                  cacheExtent: 500, // 预加载范围
-                  addAutomaticKeepAlives: false, // 减少内存占用
-                  itemCount: articleProvider.articles.length +
-                      (articleProvider.topArticle != null ? 1 : 0) +
-                      (articleProvider.isLoadingMore ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (articleProvider.topArticle != null) {
-                      if (index == 0) {
-                        return _buildTopArticleCard(
-                            context, articleProvider.topArticle!);
-                      }
-                      index -= 1;
-                    }
-
-                    if (index == articleProvider.articles.length) {
-                      return const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(8.0),
-                          child: CircularProgressIndicator(),
+            child: Stack(
+              children: [
+                Consumer<ArticleProvider>(
+                  builder: (context, articleProvider, child) {
+                    if (articleProvider.isLoading) {
+                      return Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                              Theme.of(context).primaryColor),
                         ),
                       );
                     }
-                    final article = articleProvider.articles[index];
-                    return _buildWeekCard(
-                        context, article, index, articleProvider.articles);
+
+                    if (articleProvider.errorMessage != null) {
+                      return Center(
+                        child: Text(
+                          articleProvider.errorMessage!,
+                          style: const TextStyle(color: Colors.white, fontSize: 16),
+                        ),
+                      );
+                    }
+
+                    if (articleProvider.articles.isEmpty && articleProvider.topArticle == null) {
+                      return const Center(
+                        child: Text(
+                          'No articles found.',
+                          style: TextStyle(color: Colors.white, fontSize: 16),
+                        ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.only(top: 48),
+                      // 性能优化
+                      cacheExtent: 500, // 预加载范围
+                      addAutomaticKeepAlives: false, // 减少内存占用
+                      itemCount: articleProvider.articles.length +
+                          (articleProvider.topArticle != null ? 1 : 0) +
+                          (articleProvider.isLoadingMore ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (articleProvider.topArticle != null) {
+                          if (index == 0) {
+                            return _buildTopArticleCard(
+                                context, articleProvider.topArticle!);
+                          }
+                          index -= 1;
+                        }
+
+                        if (index == articleProvider.articles.length) {
+                          return const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(8.0),
+                              child: CircularProgressIndicator(),
+                            ),
+                          );
+                        }
+                        final article = articleProvider.articles[index];
+                        return _buildWeekCard(
+                            context, article, index, articleProvider.articles);
+                      },
+                    );
                   },
-                );
-              },
+                ),
+                // 单击顶部区域返回顶部
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 80, // 为右侧登录按钮留出空间
+                  height: 40,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: () {
+                      _scrollController.animateTo(
+                        0.0,
+                        duration: const Duration(milliseconds: 600),
+                        curve: Curves.easeInOut,
+                      );
+                    },
+                    child: Container(
+                      color: Colors.transparent,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           Positioned(
@@ -162,6 +186,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
+
         ],
       ),
     );

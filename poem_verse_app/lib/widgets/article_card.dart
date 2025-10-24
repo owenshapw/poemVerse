@@ -148,7 +148,7 @@ class _ArticleCardState extends State<ArticleCard> {
       children: [
         Text(
           widget.article.title,
-          style: TextStyle(
+          style: const TextStyle(
             color: Colors.white,
             fontSize: 28,
             fontWeight: FontWeight.bold,
@@ -166,7 +166,7 @@ class _ArticleCardState extends State<ArticleCard> {
         const SizedBox(height: 20),
         Text(
           widget.article.content,
-          style: TextStyle(
+          style: const TextStyle(
             color: Colors.white,
             fontSize: 16,
             height: 1.6,
