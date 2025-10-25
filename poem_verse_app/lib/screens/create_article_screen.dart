@@ -14,14 +14,29 @@ import 'package:poem_verse_app/screens/article_preview_screen.dart';
 import 'package:poem_verse_app/utils/text_menu_utils.dart';
 
 import 'dart:io';
+import 'dart:async';
 import 'package:dio/dio.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 
 import 'package:poem_verse_app/api/api_service.dart';
+import 'package:poem_verse_app/models/poem.dart';
+import 'package:poem_verse_app/services/local_storage_service.dart';
+import 'package:poem_verse_app/screens/login_screen.dart';
+import 'package:poem_verse_app/utils/network_init_helper.dart';
 
 class CreateArticleScreen extends StatefulWidget {
   final Article? article;
+  final Poem? localPoem; // 本地作品（用于编辑）
   final bool isEdit;
-  const CreateArticleScreen({super.key, this.article, this.isEdit = false});
+  final bool isLocalMode; // 本地模式标记
+  const CreateArticleScreen({
+    super.key,
+    this.article,
+    this.localPoem,
+    this.isEdit = false,
+    this.isLocalMode = false,
+  });
 
   @override
   CreateArticleScreenState createState() => CreateArticleScreenState();
@@ -45,37 +60,65 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
   double _imageScale = 1.0;
 
   // Preview area — for debounced transform values
-  double? _previewOffsetX;
   double? _previewOffsetY;
-  double? _previewScale;
 
   @override
   void initState() {
     super.initState();
-    if (widget.isEdit && widget.article != null) {
-      _titleController.text = widget.article!.title;
-      _contentController.text = widget.article!.content;
+    // 初始化数据：优先使用本地作品，然后是云端作品
+    if (widget.isEdit) {
+      if (widget.localPoem != null) {
+        // 编辑本地作品
+        _titleController.text = widget.localPoem!.title;
+        _contentController.text = widget.localPoem!.content;
+        _previewImageUrl = widget.localPoem!.imageUrl;
+        
+        final rawOffsetX = widget.localPoem!.imageOffsetX ?? 0.0;
+        final rawOffsetY = widget.localPoem!.imageOffsetY ?? 0.0;
+        final rawScale = widget.localPoem!.imageScale ?? 1.0;
+        _imageOffsetX = rawOffsetX.isFinite ? rawOffsetX : 0.0;
+        _imageOffsetY = rawOffsetY.isFinite ? rawOffsetY : 0.0;
+        _imageScale = rawScale.isFinite ? rawScale : 1.0;
+        
+        _previewOffsetY = _imageOffsetY;
+        
+        // 加载文字位置
+        _textPositionX = widget.localPoem!.textPositionX ?? 15.0;
+        _textPositionY = widget.localPoem!.textPositionY ?? 200.0;
+        
 
-      // 保证预览直接使用 public 变体
-      _previewImageUrl = ApiService.getImageUrlWithVariant(widget.article!.imageUrl, 'public');
 
-      // Load existing positions, otherwise the default is used
-      _textPositionX = (widget.article!.textPositionX ?? 15.0).toDouble();
-      _textPositionY = (widget.article!.textPositionY ?? 200.0).toDouble();
 
-      // Load existing image transform, otherwise the default is used
-      // 强制校验有限性，避免 NaN/inf 传入
-      final rawOffsetX = widget.article!.imageOffsetX ?? 0.0;
-      final rawOffsetY = widget.article!.imageOffsetY ?? 0.0;
-      final rawScale = widget.article!.imageScale ?? 1.0;
-      _imageOffsetX = rawOffsetX.isFinite ? rawOffsetX.toDouble() : 0.0;
-      _imageOffsetY = rawOffsetY.isFinite ? rawOffsetY.toDouble() : 0.0;
-      _imageScale = rawScale.isFinite ? rawScale.toDouble() : 1.0;
-      
-      // 初始化预览偏移量为数据库中的值
-      _previewOffsetX = _imageOffsetX;
-      _previewOffsetY = _imageOffsetY;
-      _previewScale = _imageScale;
+
+
+
+
+
+
+      } else if (widget.article != null) {
+        // 编辑云端作品
+        _titleController.text = widget.article!.title;
+        _contentController.text = widget.article!.content;
+
+        // 保证预览直接使用 public 变体
+        _previewImageUrl = ApiService.getImageUrlWithVariant(widget.article!.imageUrl, 'public');
+
+        // Load existing positions, otherwise the default is used
+        _textPositionX = (widget.article!.textPositionX ?? 15.0).toDouble();
+        _textPositionY = (widget.article!.textPositionY ?? 200.0).toDouble();
+
+        // Load existing image transform, otherwise the default is used
+        // 强制校验有限性，避免 NaN/inf 传入
+        final rawOffsetX = widget.article!.imageOffsetX ?? 0.0;
+        final rawOffsetY = widget.article!.imageOffsetY ?? 0.0;
+        final rawScale = widget.article!.imageScale ?? 1.0;
+        _imageOffsetX = rawOffsetX.isFinite ? rawOffsetX.toDouble() : 0.0;
+        _imageOffsetY = rawOffsetY.isFinite ? rawOffsetY.toDouble() : 0.0;
+        _imageScale = rawScale.isFinite ? rawScale.toDouble() : 1.0;
+        
+        // 初始化预览偏移量为数据库中的值
+        _previewOffsetY = _imageOffsetY;
+      }
     } else {
       // ensure defaults finite
       if (!_imageScale.isFinite) _imageScale = 1.0;
@@ -83,28 +126,55 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
       if (!_imageOffsetY.isFinite) _imageOffsetY = 0.0;
       
       // 新建时也初始化预览值
-      _previewOffsetX = _imageOffsetX;
       _previewOffsetY = _imageOffsetY;
-      _previewScale = _imageScale;
     }
   }
 
   @override
   void dispose() {
+    // 离开页面时自动保存（本地模式 + 编辑模式）
+    if (widget.isLocalMode && widget.isEdit && widget.localPoem != null) {
+      _saveOnExit();
+    }
+    
     _titleController.dispose();
     _contentController.dispose();
     _titleFocusNode.dispose();
     _contentFocusNode.dispose();
     super.dispose();
   }
+  
+  // 离开页面时保存
+  void _saveOnExit() {
 
-  // 保存本地图片偏移数据（不发布到服务器）
-  void _saveLocalImageData() {
-    // 更新本地图片偏移数据
-    _imageOffsetX = _previewOffsetX ?? _imageOffsetX;
-    _imageOffsetY = _previewOffsetY ?? _imageOffsetY;
-    _imageScale = _previewScale ?? _imageScale;
+
+
+
+    // 直接更新 HiveObject
+    widget.localPoem!.title = _titleController.text.trim().isNotEmpty 
+        ? _titleController.text.trim() 
+        : widget.localPoem!.title;
+    widget.localPoem!.content = _contentController.text.trim().isNotEmpty 
+        ? _contentController.text.trim() 
+        : widget.localPoem!.content;
+    widget.localPoem!.imageUrl = _previewImageUrl ?? widget.localPoem!.imageUrl;
+    widget.localPoem!.synced = false;
+    widget.localPoem!.imageOffsetX = 0.0;
+    widget.localPoem!.imageOffsetY = _imageOffsetY;
+    widget.localPoem!.imageScale = 1.0;
+    widget.localPoem!.textPositionX = _textPositionX;
+    widget.localPoem!.textPositionY = _textPositionY;
+    
+    // 同步保存（不能用 async，因为在 dispose 中）
+    widget.localPoem!.save();
+
+
+
   }
+
+
+  
+
 
   
 
@@ -122,6 +192,49 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
     });
     
     final file = File(pickedFile.path);
+    
+    // 本地模式：将图片复制到永久目录
+    if (widget.isLocalMode) {
+      try {
+        // 获取应用文档目录
+        final appDocDir = await getApplicationDocumentsDirectory();
+        final imagesDir = Directory('${appDocDir.path}/images');
+        
+        // 确保图片目录存在
+        if (!await imagesDir.exists()) {
+          await imagesDir.create(recursive: true);
+        }
+        
+        // 生成唯一文件名
+        final fileName = '${DateTime.now().millisecondsSinceEpoch}${path.extension(file.path)}';
+        final permanentPath = '${imagesDir.path}/$fileName';
+        
+        // 复制文件到永久目录
+        final permanentFile = await file.copy(permanentPath);
+        
+        if (mounted) {
+          setState(() {
+            _previewImageUrl = permanentFile.path; // 使用永久路径
+            _isUploadingImage = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('图片选择成功！')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _isUploadingImage = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('图片保存失败: $e')),
+          );
+        }
+      }
+      return;
+    }
+    
+    // 云端模式：需要上传到服务器
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final token = authProvider.token;
     if (token == null) {
@@ -130,7 +243,7 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
           _isUploadingImage = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('请先登录')),
+          const SnackBar(content: Text('请先登录')),
         );
       }
       return;
@@ -264,25 +377,50 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
 
   // 交互式图片预览
   Widget _buildInteractivePreview() {
-    return InteractiveImagePreview(
-      imageUrl: ApiService.getImageUrlWithVariant(_previewImageUrl ?? '', 'public'),
-      width: double.infinity,
-      height: 180,
-      initialOffsetX: _previewOffsetX ?? _imageOffsetX,
-      initialOffsetY: _previewOffsetY ?? _imageOffsetY,
-      initialScale: _previewScale ?? _imageScale,
-      onTransformChanged: (ox, oy, s) {
-        _previewOffsetX = ox;
-        _previewOffsetY = oy;
-        _previewScale = s;
-        
-        _imageOffsetX = ox;
-        _imageOffsetY = oy;
-        _imageScale = s;
-      },
-      isInteractive: true,
-      fit: BoxFit.cover,
-    );
+    final imageUrl = _previewImageUrl ?? '';
+    final isLocalFile = imageUrl.startsWith('/') || imageUrl.startsWith('file://');
+    
+    final finalOffsetY = _previewOffsetY ?? _imageOffsetY;
+    
+    if (isLocalFile) {
+      // 本地文件预览
+      return InteractiveImagePreview(
+        key: ValueKey('edit_local_${imageUrl}_${finalOffsetY.toStringAsFixed(2)}'),
+        imageFile: File(imageUrl),
+        width: double.infinity,
+        height: 180,
+        initialOffsetX: 0.0,
+        initialOffsetY: finalOffsetY,
+        initialScale: 1.0,
+        onTransformChanged: (ox, oy, s) {
+          // 只使用 Y 方向偏移（ox 总是 0）
+          _previewOffsetY = oy;
+          _imageOffsetY = oy;
+
+        },
+        isInteractive: true,
+        fit: BoxFit.cover,
+      );
+    } else {
+      // 网络图片预览
+      return InteractiveImagePreview(
+        key: ValueKey('edit_network_${imageUrl}_${finalOffsetY.toStringAsFixed(2)}'),
+        imageUrl: ApiService.getImageUrlWithVariant(imageUrl, 'public'),
+        width: double.infinity,
+        height: 180,
+        initialOffsetX: 0.0,
+        initialOffsetY: finalOffsetY,
+        initialScale: 1.0,
+        onTransformChanged: (ox, oy, s) {
+          // 只使用 Y 方向偏移（ox 总是 0）
+          _previewOffsetY = oy;
+          _imageOffsetY = oy;
+
+        },
+        isInteractive: true,
+        fit: BoxFit.cover,
+      );
+    }
   }
 
   // 空状态预览 - 纯净的浅色占位符
@@ -292,12 +430,173 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
     );
   }
 
+  /// 云朵按钮（简洁风格）
+  Widget _buildCloudButton() {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final isLoggedIn = authProvider.isAuthenticated;
+    final unsyncedCount = LocalStorageService.getUnsyncedCount();
+    
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      height: 36,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => _navigateToLogin(),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isLoggedIn 
+                      ? (unsyncedCount > 0 ? Icons.cloud_upload_outlined : Icons.cloud_done_outlined)
+                      : Icons.cloud_off_outlined,
+                  color: Colors.white,
+                  size: 18,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  isLoggedIn ? '同步' : '登录',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+  
+  /// 导航到登录页面（按需初始化网络）
+  Future<void> _navigateToLogin() async {
+    if (!mounted) return;
+    
+    // 按需初始化网络服务
+    final success = await NetworkInitHelper.ensureNetworkInitialized(context);
+    
+    if (!success || !mounted) return;
+    
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final isLoggedIn = authProvider.isAuthenticated;
+    
+    // 如果未登录，跳转到登录页面
+    if (!isLoggedIn) {
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+      
+      // 登录成功后会自动触发同步
+      if (result == true && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('登录成功，后台正在同步本地作品...'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        // 刷新状态
+        if (mounted) {
+          setState(() {});
+        }
+      }
+      return;
+    }
+    
+    // 已登录，执行同步
+    _performSync(authProvider);
+  }
+  
+  /// 执行同步操作
+  Future<void> _performSync(AuthProvider authProvider) async {
+    // 显示同步中提示
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+            SizedBox(width: 12),
+            Expanded(child: Text('正在同步本地作品到云端...')),
+          ],
+        ),
+        duration: Duration(seconds: 30),
+      ),
+    );
+
+    try {
+      final result = await authProvider.syncLocalPoems();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        
+        if (result.success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ ${result.message}'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+          // 刷新状态
+          setState(() {});
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('⚠️ ${result.message}'),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ 同步失败: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        title: Text(widget.isEdit ? '编辑诗篇' : '发布诗篇'),
+        title: Text(widget.isLocalMode 
+          ? (widget.isEdit ? '编辑诗章' : '创作诗章')
+          : (widget.isEdit ? '编辑诗章' : '发布诗章')),
+        actions: [
+          // 云朵按钮（本地模式下始终显示）
+          if (widget.isLocalMode) _buildCloudButton(),
+        ],
       ),
       body: GestureDetector(
         // 点击空白区域收回键盘
@@ -407,38 +706,41 @@ class CreateArticleScreenState extends State<CreateArticleScreen> {
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () async {
-                            // 保存本地图片偏移数据并跳转预览页面
-                            _saveLocalImageData();
                             if (mounted) {
-                              final newPosition = await Navigator.push(
+                              final result = await Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => ArticlePreviewScreen(
                                     title: _titleController.text,
                                     content: _contentController.text,
-                                    author: Provider.of<AuthProvider>(context, listen: false).username ?? '佚名',
+                                    author: Provider.of<AuthProvider>(context, listen: false).username ?? '',
                                     imageUrl: _previewImageUrl,
                                     initialTextPositionX: _textPositionX,
                                     initialTextPositionY: _textPositionY,
                                     articleId: widget.isEdit ? widget.article?.id : null,
                                     isEdit: widget.isEdit,
-                                    imageOffsetX: _previewOffsetX ?? _imageOffsetX,
-                                    imageOffsetY: _previewOffsetY ?? _imageOffsetY,
-                                    imageScale: _previewScale ?? _imageScale,
+                                    imageOffsetX: 0.0,
+                                    imageOffsetY: _imageOffsetY, // 传递当前图片偏移
+                                    imageScale: 1.0,
+                                    isLocalMode: widget.isLocalMode,
+                                    localPoem: widget.localPoem,
                                   ),
                                 ),
                               );
-                              if (newPosition != null) {
-                                if (newPosition == 'published') {
-                                  // 从预览页面发布成功，关闭当前页面
-                                  // 注意：预览页面现在会直接跳转到作品集，不会返回这个状态
+                              
+                              // 从预览页面返回
+                              if (result != null) {
+                                if (result == 'saved' || result == 'published') {
+                                  // 预览页面已保存，关闭编辑页面
                                   Navigator.of(context).pop(true);
-                                } else if (newPosition is Map) {
-                                  // 返回文字位置更新
+                                } else if (result is Map) {
+                                  // 返回文字位置更新（更新内存，离开时会自动保存）
                                   setState(() {
-                                    _textPositionX = (newPosition['x'] as num?)?.toDouble() ?? 15.0;
-                                    _textPositionY = (newPosition['y'] as num?)?.toDouble() ?? 200.0;
+                                    _textPositionX = (result['x'] as num?)?.toDouble() ?? _textPositionX;
+                                    _textPositionY = (result['y'] as num?)?.toDouble() ?? _textPositionY;
                                   });
+
+
                                 }
                               }
                             }

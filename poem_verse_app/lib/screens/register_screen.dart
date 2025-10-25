@@ -45,10 +45,17 @@ class RegisterScreenState extends State<RegisterScreen> {
       _isLoading = false;
     });
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('注册成功！')),
-      );
-      Navigator.of(context).pop();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('注册成功！'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        // 注册成功后跳转到个人作品列表
+        Navigator.of(context).pushNamedAndRemoveUntil('/my_articles', (route) => false);
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('注册失败，请重试')),

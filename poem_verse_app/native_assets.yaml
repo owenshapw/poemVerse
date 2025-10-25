@@ -1,0 +1,4 @@
+# Native Assets configuration
+# Temporarily disable native assets to fix Flutter 3.35.x build issues
+native_assets:
+  enable: false

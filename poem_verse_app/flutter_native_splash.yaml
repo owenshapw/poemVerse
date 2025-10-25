@@ -1,0 +1,42 @@
+# flutter_native_splash 配置
+# 生成与 splash_screen.dart 一致的原生启动页
+
+flutter_native_splash:
+  # 背景颜色（使用渐变的中间色）
+  color: "#6B5BFF"
+  
+  # 使用自定义背景图片（推荐）
+  # 如果想要完美匹配渐变效果，需要创建一个渐变背景图
+  background_image: "assets/images/splash_background.png"
+  
+  # Logo 图片
+  image: assets/images/poemlogo.png
+  
+  # Logo 位置（顶部35%的位置）
+  image_position: center_top
+  
+  # 品牌图片（"诗章"文字）
+  # 如果需要，可以创建一个包含"诗章"文字的图片
+  branding: assets/images/app_title.png
+  branding_mode: bottom
+  
+  # 适配不同平台
+  android: true
+  ios: true
+  web: false
+  
+  # 全屏模式
+  fullscreen: true
+  
+  # iOS 特定配置
+  ios_content_mode: scaleAspectFill
+  
+  # Android 特定配置
+  android_gravity: fill
+  android_screen_orientation: portrait
+  
+  # 暗色模式（使用相同配置）
+  color_dark: "#6B5BFF"
+  background_image_dark: "assets/images/splash_background.png"
+  image_dark: assets/images/poemlogo.png
+  branding_dark: assets/images/app_title.png

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- 性能分析优化设置 -->
+    <key>CoreAnalyticsSettings</key>
+    <dict>
+        <key>Enabled</key>
+        <false/>
+        <key>LaunchMetricsEnabled</key>
+        <false/>
+        <key>FramePresentationMetricsEnabled</key>
+        <false/>
+    </dict>
+    
+    <!-- 无障碍功能优化设置 -->
+    <key>AccessibilitySettings</key>
+    <dict>
+        <key>OptimizedFocusManagement</key>
+        <true/>
+        <key>LinearFocusCachingEnabled</key>
+        <true/>
+        <key>SemanticsContainerOptimization</key>
+        <true/>
+    </dict>
+    
+    <!-- 日志过滤设置 -->
+    <key>LoggingSettings</key>
+    <dict>
+        <key>FilterCAEvents</key>
+        <true/>
+        <key>FilterAccessibilityWarnings</key>
+        <true/>
+        <key>VerboseLogging</key>
+        <false/>
+    </dict>
+</dict>
+</plist>

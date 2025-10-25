@@ -30,6 +30,7 @@
     <string>This app needs permission to save poem images and artwork to your photo library.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>This app needs permission to access your photo library to select images for poem creation and editing.</string>
+
     <key>UIApplicationSupportsIndirectInputEvents</key>
     <true/>
     <key>UILaunchStoryboardName</key>
@@ -62,5 +63,27 @@
     </array>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
+    
+    <!-- 禁用性能分析以避免CA事件错误 -->
+    <key>CAReportingEnabled</key>
+    <false/>
+    
+    <!-- 禁用应用启动性能测量 -->
+    <key>CALaunchReportingEnabled</key>
+    <false/>
+    
+    <!-- 优化性能数据收集 -->
+    <key>CADisableMinimumFrameDurationOnPhone</key>
+    <true/>
+    
+    <!-- 无障碍功能配置 -->
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>arm64</string>
+    </array>
+    
+    <!-- 支持无障碍功能 -->
+    <key>UIAccessibilityTraits</key>
+    <string>UIAccessibilityTraitNone</string>
 </dict>
 </plist>

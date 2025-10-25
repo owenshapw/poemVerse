@@ -1,13 +1,11 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:poem_verse_app/providers/auth_provider.dart';
 import 'package:poem_verse_app/providers/article_provider.dart';
+import 'package:poem_verse_app/screens/splash_screen.dart';
 import 'package:poem_verse_app/screens/home_screen.dart';
-import 'package:poem_verse_app/services/local_storage_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:poem_verse_app/screens/reset_password_screen.dart';
 import 'package:poem_verse_app/screens/login_screen.dart';
 import 'package:poem_verse_app/screens/author_works_screen.dart';
@@ -15,53 +13,25 @@ import 'package:poem_verse_app/screens/author_magazine_screen.dart';
 import 'package:poem_verse_app/screens/local_home_screen.dart';
 import 'package:poem_verse_app/screens/local_poems_screen.dart';
 import 'package:poem_verse_app/screens/my_articles_screen.dart';
+import 'package:poem_verse_app/services/local_storage_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:app_links/app_links.dart';
 import 'dart:async';
 
-void main() {
-  // ⚡ 极速启动：只做最必要的初始化，立即启动APP
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  debugPrint('🚀 main() 执行，立即调用 runApp()');
+  // 设置默认环境
+  dotenv.env['LOCAL_MODE'] = 'true';
   
-  // 🚀 立即启动应用，所有其他初始化都在后台进行
-  runApp(const PoemVerseApp());
-  
-  debugPrint('✅ runApp() 已调用，开始后台初始化');
-  
-  // 🔧 后台初始化（不阻塞UI）- 使用 Future.microtask 确保真正异步
-  Future.microtask(() => _initializeInBackground());
-}
-
-/// 后台初始化（环境变量 + 系统样式）
-Future<void> _initializeInBackground() async {
-  debugPrint('🔧 后台初始化开始...');
-  
-  // 设置系统样式
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-    ),
-  );
-  
-  // ⏰ 延迟加载环境变量（给打字动画时间）
-  await Future.delayed(const Duration(seconds: 5));
-  await _loadEnvInBackground();
-  
-  debugPrint('✅ 后台初始化完成');
-}
-
-/// 后台加载环境变量
-Future<void> _loadEnvInBackground() async {
+  // 初始化本地存储
   try {
-    await dotenv.load(fileName: '.env');
-    debugPrint('✅ .env 文件加载完成');
+    await LocalStorageService.init();
   } catch (e) {
-    debugPrint('⚠️ No .env file found, initializing with empty config: $e');
-    // 使用 testLoad 初始化空环境
-    dotenv.testLoad(fileInput: 'LOCAL_MODE=true');
+    debugPrint('本地存储初始化失败，但应用继续运行: $e');
   }
+  
+  runApp(const PoemVerseApp());
 }
 
 class PoemVerseApp extends StatefulWidget {
@@ -144,9 +114,8 @@ class PoemVerseAppState extends State<PoemVerseApp> {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // 延迟创建 AuthProvider，避免启动时触发网络权限弹窗
-        ChangeNotifierProvider(create: (_) => AuthProvider(), lazy: true),
-        ChangeNotifierProvider(create: (_) => ArticleProvider(), lazy: true),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => ArticleProvider()),
       ],
       child: MaterialApp(
         navigatorKey: _navigatorKey,
@@ -154,10 +123,6 @@ class PoemVerseAppState extends State<PoemVerseApp> {
         debugShowCheckedModeBanner: false, // 隐藏DEBUG标识
         theme: ThemeData(
           primarySwatch: Colors.blue,
-          // 优化无障碍功能
-          visualDensity: VisualDensity.adaptivePlatformDensity,
-          // 禁用某些性能分析相关功能
-          platform: TargetPlatform.iOS,
         ),
         // 配置本地化
         localizationsDelegates: const [
@@ -170,7 +135,14 @@ class PoemVerseAppState extends State<PoemVerseApp> {
           Locale('en', 'US'), // 英文
         ],
         locale: const Locale('zh', 'CN'), // 设置默认语言为中文
-        home: const SmartLaunchScreen(), // 智能启动页面
+        home: Builder(
+          builder: (context) {
+            // 响应式布局判断
+            return MediaQuery.of(context).size.width > 600
+                ? const SplashScreen() // iPad布局 - 可以替换为平板专用的启动屏
+                : const SplashScreen(); // 手机布局
+          },
+        ),
         routes: {
           '/home': (context) {
             // 响应式布局判断
@@ -247,144 +219,6 @@ class PoemVerseAppState extends State<PoemVerseApp> {
           }
           return null;
         },
-      ),
-    );
-  }
-}
-
-/// 智能启动页面 - 根据用户状态智能跳转
-class SmartLaunchScreen extends StatefulWidget {
-  const SmartLaunchScreen({super.key});
-
-  @override
-  State<SmartLaunchScreen> createState() => _SmartLaunchScreenState();
-}
-
-class _SmartLaunchScreenState extends State<SmartLaunchScreen> {
-  @override
-  void initState() {
-    super.initState();
-    _initializeAndNavigate();
-  }
-
-  Future<void> _initializeAndNavigate() async {
-    debugPrint('🚀 SmartLaunchScreen: 开始初始化');
-    
-    try {
-      // 并行初始化服务
-      await Future.wait([
-        _initServices(),
-        // 最小显示时间（给原生启动页一点时间）
-        Future.delayed(const Duration(milliseconds: 500)),
-      ]);
-    } catch (e) {
-      debugPrint('⚠️ 初始化错误: $e');
-    }
-    
-    if (mounted) {
-      _navigateToAppropriateScreen();
-    }
-  }
-
-  Future<void> _initServices() async {
-    debugPrint('🔧 初始化本地服务...');
-    
-    // 只初始化本地服务，不初始化网络相关服务
-    // 避免触发“允许查找本地网络”弹窗
-    try {
-      await LocalStorageService.init().timeout(
-        const Duration(seconds: 2),
-        onTimeout: () {
-          debugPrint('⚠️ 本地存储初始化超时');
-        },
-      );
-      debugPrint('✅ 本地存储初始化完成');
-    } catch (e) {
-      debugPrint('❌ 本地存储初始化失败: $e');
-    }
-    
-    // 注意：AuthProvider 的初始化延迟到跳转后进行
-    debugPrint('⏳ AuthProvider 将在跳转后延迟初始化');
-  }
-
-  Future<void> _navigateToAppropriateScreen() async {
-    if (!mounted) return;
-    
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      
-      // 判断启动状态（不依赖 AuthProvider）
-      final hasLaunchedBefore = prefs.getBool('is_first_launch') == false;
-      final poemsCount = LocalStorageService.getPoemsCount();
-      final isFirstLaunch = !hasLaunchedBefore && poemsCount == 0;
-      
-      debugPrint('=== 启动判断（不检查登录状态） ===');
-      debugPrint('hasLaunchedBefore: $hasLaunchedBefore');
-      debugPrint('poemsCount: $poemsCount');
-      debugPrint('isFirstLaunch: $isFirstLaunch');
-      debugPrint('===============');
-      
-      if (!mounted) return;
-      
-      Widget targetScreen;
-      
-      if (isFirstLaunch) {
-        // 首次启动：显示打字动画的欢迎页面
-        debugPrint('✨ 首次启动，显示打字动画');
-        await prefs.setBool('is_first_launch', false);
-        targetScreen = const LocalHomeScreen(showTypingAnimation: true);
-      } else {
-        // 非首次启动：跳转到本地作品列表（延迟检查登录状态）
-        debugPrint('📱 非首次启动，先跳转到本地作品页');
-        targetScreen = const LocalPoemsScreen();
-      }
-      
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => targetScreen),
-        );
-        
-        // 🔴 完全不初始化 AuthProvider，等待用户主动触发
-        debugPrint('⏳ AuthProvider 将在用户需要时按需初始化');
-      }
-    } catch (e) {
-      debugPrint('❌ 启动页面出错: $e');
-      // 出错时默认跳转到欢迎页面
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => const LocalHomeScreen(showTypingAnimation: true),
-          ),
-        );
-      }
-    }
-  }
-  
-
-
-
-
-  @override
-  Widget build(BuildContext context) {
-    // 显示与原生启动页一致的背景，确保无缝过渡
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF5A7AFF),
-              Color(0xFF6B5BFF),
-              Color(0xFF8A5AFF),
-              Color(0xFF6B4BA5),
-            ],
-            stops: [0.0, 0.3, 0.7, 1.0],
-          ),
-        ),
-        child: const Center(
-          child: SizedBox.shrink(), // 不显示任何加载指示器，保持纯净
-        ),
       ),
     );
   }

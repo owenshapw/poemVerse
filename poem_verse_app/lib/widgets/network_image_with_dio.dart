@@ -240,13 +240,26 @@ class NetworkImageWithDio extends StatelessWidget {
         );
       },
       errorBuilder: (context, error, stackTrace) {
-
+        debugPrint('Network image error for URL: $imageUrl, Error: $error');
         return Container(
           width: width,
           height: height,
           color: Colors.grey.shade200,
           alignment: Alignment.center,
-          child: const Icon(Icons.broken_image, color: Colors.grey, size: 28),
+          child: const Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.broken_image, color: Colors.grey, size: 28),
+              SizedBox(height: 4),
+              Text(
+                '图片加载失败',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
         );
       },
     );

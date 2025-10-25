@@ -591,6 +591,8 @@ class ApiService {
     return 'device_${timestamp}_$randomNum';
   }
 
+
+
   static Future<http.Response> updateArticleWithBody(
       String id, Map<String, dynamic> body, {
       required String token,

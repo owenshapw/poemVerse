@@ -373,9 +373,9 @@ class _AuthorWorksScreenState extends State<AuthorWorksScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('需要照片权限'),
-        content: const Text(
-          '要保存诗篇图片到相册，需要照片权限.\n\n'
+                    title: const Text('需要照片权限'),
+            content: const Text(
+              '要保存诗章图片到相册，需要照片权限.\n\n'
           '请在设置中：\n'
           '1. 找到"Poem Verse App"\n'
           '2. 点击"照片"\n'

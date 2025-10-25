@@ -1,11 +1,13 @@
 // lib/widgets/interactive_image_preview.dart
 // ignore_for_file: deprecated_member_use, sized_box_for_whitespace, avoid_print
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:poem_verse_app/widgets/network_image_with_dio.dart';
 
 class InteractiveImagePreview extends StatefulWidget {
-  final String imageUrl;
+  final String? imageUrl;
+  final File? imageFile;
   final double width;
   final double height;
   final double initialOffsetX;
@@ -17,7 +19,8 @@ class InteractiveImagePreview extends StatefulWidget {
 
   const InteractiveImagePreview({
     super.key,
-    required this.imageUrl,
+    this.imageUrl,
+    this.imageFile,
     required this.width,
     required this.height,
     this.initialOffsetX = 0.0,
@@ -26,7 +29,7 @@ class InteractiveImagePreview extends StatefulWidget {
     this.onTransformChanged,
     this.isInteractive = true,
     this.fit = BoxFit.cover,
-  });
+  }) : assert(imageUrl != null || imageFile != null, 'Either imageUrl or imageFile must be provided');
 
   @override
   State<InteractiveImagePreview> createState() => _InteractiveImagePreviewState();
@@ -57,8 +60,8 @@ class _InteractiveImagePreviewState extends State<InteractiveImagePreview> with 
     super.initState();
     // initial transform will be applied directly to the controller
     _transformationController = TransformationController();
-    // start identity; will update after we resolve image size
-    _transformationController.value = Matrix4.identity();
+    // 立即应用初始 offset
+    _transformationController.value = Matrix4.identity()..translate(0.0, widget.initialOffsetY, 0.0);
     _transformationController.addListener(_onControllerChanged);
   }
 
@@ -69,6 +72,7 @@ class _InteractiveImagePreviewState extends State<InteractiveImagePreview> with 
     if (_internalUpdate) {
       return;
     }
+    
     final m = _transformationController.value;
     double tx = m.storage[12];
     double ty = m.storage[13];
@@ -108,7 +112,14 @@ class _InteractiveImagePreviewState extends State<InteractiveImagePreview> with 
       _imageStreamListener = null;
     }
 
-    final provider = NetworkImage(widget.imageUrl);
+    ImageProvider provider;
+    if (widget.imageFile != null) {
+      provider = FileImage(widget.imageFile!);
+    } else if (widget.imageUrl != null) {
+      provider = NetworkImage(widget.imageUrl!);
+    } else {
+      return; // No image to resolve
+    }
     final config = ImageConfiguration(devicePixelRatio: MediaQuery.of(context).devicePixelRatio);
     _imageStream = provider.resolve(config);
     _imageStreamListener = ImageStreamListener((ImageInfo info, bool synchronousCall) {
@@ -175,10 +186,16 @@ class _InteractiveImagePreviewState extends State<InteractiveImagePreview> with 
       _internalUpdate = false;
 
       // 可选：强制清理缓存以确保新图片/变换被渲染
-      if (urlChanged && widget.imageUrl.isNotEmpty) {
-        final provider = NetworkImage(widget.imageUrl);
-        provider.evict();
-        PaintingBinding.instance.imageCache.evict(provider);
+      if (urlChanged) {
+        if (widget.imageFile != null) {
+          final provider = FileImage(widget.imageFile!);
+          provider.evict();
+          PaintingBinding.instance.imageCache.evict(provider);
+        } else if (widget.imageUrl != null && widget.imageUrl!.isNotEmpty) {
+          final provider = NetworkImage(widget.imageUrl!);
+          provider.evict();
+          PaintingBinding.instance.imageCache.evict(provider);
+        }
       }
 
       // 触发一次新的解析与回调（在下一帧）
@@ -224,12 +241,7 @@ class _InteractiveImagePreviewState extends State<InteractiveImagePreview> with 
         image = SizedBox(
           width: availableWidth,
           height: _displayImageHeight,
-          child: NetworkImageWithDio(
-            imageUrl: widget.imageUrl,
-            fit: widget.fit,
-            width: availableWidth,
-            height: _displayImageHeight,
-          ),
+          child: _buildImageWidget(availableWidth, _displayImageHeight),
         );
       } else {
         // fallback while resolving:
@@ -238,12 +250,7 @@ class _InteractiveImagePreviewState extends State<InteractiveImagePreview> with 
         image = SizedBox(
           width: availableWidth,
           // height: null -> allow natural height according to image aspect ratio
-          child: NetworkImageWithDio(
-            imageUrl: widget.imageUrl,
-            fit: widget.fit,
-            width: availableWidth,
-            height: null,
-          ),
+          child: _buildImageWidget(availableWidth, null),
         );
       }
 
@@ -272,6 +279,81 @@ class _InteractiveImagePreviewState extends State<InteractiveImagePreview> with 
         ),
       );
     });
+  }
+
+  Widget _buildImageWidget(double width, double? height) {
+    if (widget.imageFile != null) {
+      // 本地文件图片
+      // 检查文件是否存在
+      if (!widget.imageFile!.existsSync()) {
+        return Container(
+          width: width,
+          height: height ?? 200,
+          color: Colors.grey[300],
+          alignment: Alignment.center,
+          child: const Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.image_not_supported,
+                color: Colors.grey,
+                size: 48,
+              ),
+              SizedBox(height: 8),
+              Text(
+                '图片文件不存在',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+      
+      return Image.file(
+        widget.imageFile!,
+        width: width,
+        height: height,
+        fit: widget.fit,
+        errorBuilder: (context, error, stackTrace) {
+          print('Local image error: $error');
+          return Container(
+            width: width,
+            height: height ?? 200,
+            color: Colors.grey[300],
+            alignment: Alignment.center,
+            child: const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.broken_image,
+                  color: Colors.grey,
+                  size: 48,
+                ),
+                SizedBox(height: 8),
+                Text(
+                  '图片加载失败',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    } else {
+      // 网络图片
+      return NetworkImageWithDio(
+        imageUrl: widget.imageUrl!,
+        fit: widget.fit,
+        width: width,
+        height: height,
+      );
+    }
   }
 }
 

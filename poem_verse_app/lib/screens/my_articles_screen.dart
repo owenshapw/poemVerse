@@ -19,12 +19,21 @@ class MyArticlesScreen extends StatefulWidget {
 class MyArticlesScreenState extends State<MyArticlesScreen> with WidgetsBindingObserver, RouteAware {
   Future<List<Article>>? _myArticlesFuture;
   final ScrollController _scrollController = ScrollController();
+  bool _wasSyncing = false; // 用于检测同步状态变化
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadMyArticles();
+    
+    // 监听同步状态变化
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        _wasSyncing = authProvider.isSyncing;
+      }
+    });
   }
 
   @override
@@ -87,8 +96,17 @@ class MyArticlesScreenState extends State<MyArticlesScreen> with WidgetsBindingO
       final data = await ApiService.getMyArticles(token, userId);
       final articlesJson = data['articles'] as List?;
       final list = articlesJson?.map((j) => Article.fromJson(j)).toList().cast<Article>() ?? <Article>[];
+      debugPrint('从云端获取到 ${list.length} 个作品（包含登录时同步的本地作品）');
+      
+      // 调试：查看云端返回的数据结构
+      if (list.isNotEmpty) {
+        final firstArticle = list.first;
+        debugPrint('第一篇作品数据: title=${firstArticle.title}, imageUrl=${firstArticle.imageUrl}, offsetX=${firstArticle.imageOffsetX}, offsetY=${firstArticle.imageOffsetY}');
+      }
+      
       return list;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('获取云端作品失败: $e');
       return <Article>[];
     }
   }
@@ -141,36 +159,33 @@ class MyArticlesScreenState extends State<MyArticlesScreen> with WidgetsBindingO
 
   Widget _buildEmptyState() {
     return Center(
-      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(Icons.article_outlined, color: Colors.purple.shade200, size: 80),
-        const SizedBox(height: 24),
-        Text('还没有诗篇', style: TextStyle(color: Colors.grey[700], fontSize: 20, fontWeight: FontWeight.w500)),
-        const SizedBox(height: 12),
-        Text('点击右上角的编辑按钮\n开始创作你的第一首诗篇', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[600], fontSize: 16, height: 1.5)),
-        const SizedBox(height: 32),
-        ElevatedButton.icon(
-          onPressed: () async {
-            final navigator = Navigator.of(context);
-            final result = await navigator.push(MaterialPageRoute(builder: (ctx) => const CreateArticleScreen()));
-            if (!mounted) return;
-            if (result != null) {
-              if (result is Map && result['action'] == 'published') {
-                await _handlePublishedArticle(result['articleInfo']);
-              } else if (result == 'published' || result == true) {
-                await _loadMyArticles(clearCache: true);
-              }
-            }
-          },
-          icon: const Icon(Icons.edit_outlined),
-          label: const Text('开始创作'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.purple.shade100,
-            foregroundColor: Colors.purple.shade700,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.article_outlined,
+            color: const Color(0xFF8A5AFF).withValues(alpha: 0.6), // 半透明紫色
+            size: 100,
           ),
-        ),
-      ]),
+          const SizedBox(height: 24),
+          Text(
+            '还没有诗章',
+            style: TextStyle(
+              color: Colors.grey[700],
+              fontSize: 20,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '点击右上角的 + 按钮开始创作',
+            style: TextStyle(
+              color: Colors.grey[500],
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -258,22 +273,46 @@ class MyArticlesScreenState extends State<MyArticlesScreen> with WidgetsBindingO
                       left: 12,
                       right: 12,
                       bottom: 12,
-                      child: Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                          shadows: [
-                            Shadow(
-                              offset: Offset(1, 1),
-                              blurRadius: 3,
-                              color: Colors.black54,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              title,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                                shadows: [
+                                  Shadow(
+                                    offset: Offset(1, 1),
+                                    blurRadius: 3,
+                                    color: Colors.black54,
+                                  ),
+                                ],
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          // 作者信息显示（如果有的话）
+                          if (article.author.isNotEmpty) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                article.author,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                             ),
                           ],
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                        ],
                       ),
                     ),
                   ],
@@ -319,90 +358,110 @@ class MyArticlesScreenState extends State<MyArticlesScreen> with WidgetsBindingO
       letterSpacing: 1.2,
     );
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F6FF),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, _) {
+        // 检测同步状态从 true 变为 false（同步完成）
+        if (_wasSyncing && !authProvider.isSyncing) {
+          _wasSyncing = false;
+          // 同步完成，刷新列表
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              _loadMyArticles(clearCache: true);
+            }
+          });
+        } else if (authProvider.isSyncing) {
+          _wasSyncing = true;
+        }
+
+        return Scaffold(
+          backgroundColor: const Color(0xFFF8F6FF),
+          body: SafeArea(
+            child: Stack(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  child: Row(
-                    children: [
-                      Expanded(child: Text('我的诗篇', style: titleStyle)),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
+                Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      child: Row(
                         children: [
-                          IconButton(
-                            icon: Icon(Icons.add_circle_outline, size: 22, color: Colors.grey[800]),
-                            tooltip: '发布诗篇',
-                            onPressed: () async {
-                              final navigator = Navigator.of(context);
-                              final result = await navigator.push(MaterialPageRoute(builder: (ctx) => const CreateArticleScreen()));
-                              if (!mounted) return;
-                              if (result != null) {
-                                if (result is Map && result['action'] == 'published') {
-                                  await _handlePublishedArticle(result['articleInfo']);
-                                } else if (result == 'published' || result == true) {
-                                  await _loadMyArticles(clearCache: true);
-                                }
-                              }
-                            },
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.logout_outlined, size: 22, color: Colors.grey[800]),
-                            tooltip: '退出登录',
-                            onPressed: () async {
-                              final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                              final navigator = Navigator.of(context);
-                              final confirmed = await showDialog<bool>(
-                                context: context,
-                                builder: (c) => AlertDialog(
-                                  title: const Text('确认退出'),
-                                  content: const Text('确定要退出登录吗？'),
-                                  actions: [
-                                    TextButton(onPressed: () => Navigator.of(c).pop(false), child: const Text('取消')),
-                                    TextButton(onPressed: () => Navigator.of(c).pop(true), child: const Text('退出')),
-                                  ],
-                                ),
-                              );
-                              if (confirmed != true) return;
-                              authProvider.logout();
-                              navigator.pushNamedAndRemoveUntil('/home', (route) => false);
-                            },
+                          Expanded(child: Text('我的诗章', style: titleStyle)),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: Icon(Icons.add_circle_outline, size: 22, color: Colors.grey[800]),
+                                tooltip: '发布诗章',
+                                onPressed: () async {
+                                  final navigator = Navigator.of(context);
+                                  final result = await navigator.push(MaterialPageRoute(builder: (ctx) => const CreateArticleScreen()));
+                                  if (!mounted) return;
+                                  if (result != null) {
+                                    if (result is Map && result['action'] == 'published') {
+                                      await _handlePublishedArticle(result['articleInfo']);
+                                    } else if (result == 'published' || result == true) {
+                                      await _loadMyArticles(clearCache: true);
+                                    }
+                                  }
+                                },
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.logout_outlined, size: 22, color: Colors.grey[800]),
+                                tooltip: '退出登录',
+                                onPressed: () async {
+                                  final logoutAuthProvider = Provider.of<AuthProvider>(context, listen: false);
+                                  final navigator = Navigator.of(context);
+                                  final confirmed = await showDialog<bool>(
+                                    context: context,
+                                    builder: (c) => AlertDialog(
+                                      title: const Text('确认退出'),
+                                      content: const Text('确定要退出登录吗？'),
+                                      actions: [
+                                        TextButton(onPressed: () => Navigator.of(c).pop(false), child: const Text('取消')),
+                                        TextButton(onPressed: () => Navigator.of(c).pop(true), child: const Text('退出')),
+                                      ],
+                                    ),
+                                  );
+                                  if (confirmed != true) return;
+                                  await logoutAuthProvider.logout();
+                                  navigator.pushNamedAndRemoveUntil('/local_home', (route) => false);
+                                },
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
+                    ),
+                    // 同步状态提示条
+                    if (authProvider.isSyncing)
+                      _buildSyncingBanner(authProvider),
+                    Expanded(child: _buildContent()),
+                  ],
+                ),
+                // 单击顶部区域返回顶部
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 120, // 为右侧按钮留出空间
+                  height: 40,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: () {
+                      _scrollController.animateTo(
+                        0.0,
+                        duration: const Duration(milliseconds: 600),
+                        curve: Curves.easeInOut,
+                      );
+                    },
+                    child: Container(
+                      color: Colors.transparent,
+                    ),
                   ),
                 ),
-                Expanded(child: _buildContent()),
               ],
             ),
-            // 单击顶部区域返回顶部
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 120, // 为右侧按钮留出空间
-              height: 40,
-              child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onTap: () {
-                  _scrollController.animateTo(
-                    0.0,
-                    duration: const Duration(milliseconds: 600),
-                    curve: Curves.easeInOut,
-                  );
-                },
-                child: Container(
-                  color: Colors.transparent,
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
+        );
+      },
     );
   }
 
@@ -433,5 +492,73 @@ class MyArticlesScreenState extends State<MyArticlesScreen> with WidgetsBindingO
     final navigator = Navigator.of(context);
     await navigator.push(MaterialPageRoute(builder: (ctx) => ArticleDetailScreen(articles: articles, initialIndex: idx)));
     await _loadMyArticles(clearCache: true);
+  }
+
+  /// 构建同步状态提示条
+  Widget _buildSyncingBanner(AuthProvider authProvider) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.blue.shade400,
+            Colors.blue.shade500,
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          const SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  '您的新作正在加载',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (authProvider.syncTotal > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      '正在同步: ${authProvider.syncProgress}/${authProvider.syncTotal}',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Icon(
+            Icons.cloud_upload,
+            color: Colors.white.withValues(alpha: 0.9),
+            size: 20,
+          ),
+        ],
+      ),
+    );
   }
 }

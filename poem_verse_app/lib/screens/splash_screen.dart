@@ -1,6 +1,13 @@
 // lib/screens/splash_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'package:poem_verse_app/providers/auth_provider.dart';
+import 'package:poem_verse_app/screens/local_home_screen.dart';
+import 'package:poem_verse_app/screens/my_articles_screen.dart';
+import 'package:poem_verse_app/screens/local_poems_screen.dart';
+import 'package:poem_verse_app/services/local_storage_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'dart:ui' as ui;
 import 'dart:math' as math;
@@ -18,12 +25,13 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   late Animation<double> _scaleAnimation;
   final String _fullText = '在灯下读你，仿佛在夜中读光';
   int _currentIndex = 0;
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
     
-    // 设置状态栏
+    // ⚡ 立即设置状态栏（同步操作，不阻塞）
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -32,13 +40,12 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       ),
     );
 
-    // 动画控制器
+    // 🎨 立即初始化动画（同步操作，不阻塞）
     _controller = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
 
-    // 淡入动画
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
@@ -46,7 +53,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       ),
     );
 
-    // 缩放动画
     _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
@@ -54,33 +60,200 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       ),
     );
 
+    // ✅ 立即启动动画
     _controller.forward();
 
-    // 延迟1秒后开始打字动画
-    Timer(const Duration(milliseconds: 1000), () {
-      _startTypingAnimation();
-    });
+    // 🚀 使用 WidgetsBinding.instance.addPostFrameCallback 确保 UI 先渲染
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // 延迟1秒后开始打字动画
+      Timer(const Duration(milliseconds: 1000), () {
+        if (mounted) {
+          _startTypingAnimation();
+        }
+      });
 
-    // 5.5秒后跳转到主页
-    Timer(const Duration(milliseconds: 5500), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/home');
-      }
+      // 🔧 后台异步初始化（不阻塞UI渲染）
+      _initializeApp();
     });
   }
 
+  Future<void> _initializeApp() async {
+    final startTime = DateTime.now();
+    debugPrint('⏱️ 开始后台初始化: ${startTime.toIso8601String()}');
+    
+    try {
+      // 🚀 优化：并行初始化，保证足够时间展示打字动画
+      // 副标题13个字 × 180ms/字 + 1秒延迟 = 3.34秒 + 0.5秒缓冲 = 4秒
+      await Future.wait([
+        _initServices().timeout(
+          const Duration(seconds: 5), // 5秒超时保护
+          onTimeout: () {
+            debugPrint('⚠️ 初始化超时，但应用继续启动');
+          },
+        ),
+        Future.delayed(const Duration(milliseconds: 4000)), // 4秒最小显示时间
+      ]);
+      
+      final endTime = DateTime.now();
+      final duration = endTime.difference(startTime);
+      debugPrint('✅ 初始化完成，总耗时: ${duration.inMilliseconds}ms');
+    } catch (e) {
+      debugPrint('❌ 初始化错误: $e');
+      // 即使出错也要保证最少显示时间
+      final elapsed = DateTime.now().difference(startTime);
+      final remaining = 4000 - elapsed.inMilliseconds;
+      if (remaining > 0) {
+        debugPrint('⏳ 等待剩余 ${remaining}ms 以完成动画');
+        await Future.delayed(Duration(milliseconds: remaining));
+      }
+    }
+    
+    if (mounted) {
+      setState(() {
+        _isInitialized = true;
+      });
+      debugPrint('🚀 开始跳转到主页面');
+      _navigateToMainScreen();
+    }
+  }
+
+  Future<void> _initServices() async {
+    final initStartTime = DateTime.now();
+    debugPrint('🔧 后台初始化服务开始...');
+    
+    // 🚀 优化：并行初始化，更快完成
+    await Future.wait([
+      // 初始化本地存储
+      Future(() async {
+        try {
+          final dbStartTime = DateTime.now();
+          await LocalStorageService.init().timeout(
+            const Duration(seconds: 2), // 缩短到2秒超时
+            onTimeout: () {
+              debugPrint('⚠️ 本地存储初始化超时');
+            },
+          );
+          final dbDuration = DateTime.now().difference(dbStartTime);
+          debugPrint('✅ 本地存储初始化完成 (${dbDuration.inMilliseconds}ms)');
+        } catch (e) {
+          debugPrint('❌ 本地存储初始化失败: $e');
+        }
+      }),
+      // 初始化 AuthProvider
+      Future(() async {
+        if (!mounted) return;
+        try {
+          final authStartTime = DateTime.now();
+          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+          if (!authProvider.isInitialized) {
+            await authProvider.init().timeout(
+              const Duration(seconds: 1), // 缩短到1秒超时
+              onTimeout: () {
+                debugPrint('⚠️ AuthProvider 初始化超时');
+              },
+            );
+          }
+          final authDuration = DateTime.now().difference(authStartTime);
+          debugPrint('✅ AuthProvider 初始化完成 (${authDuration.inMilliseconds}ms)');
+        } catch (e) {
+          debugPrint('❌ AuthProvider 初始化失败: $e');
+        }
+      }),
+    ]);
+    
+    final initDuration = DateTime.now().difference(initStartTime);
+    debugPrint('✅ 后台初始化完成，总耗时: ${initDuration.inMilliseconds}ms');
+  }
+
   void _startTypingAnimation() {
+    debugPrint('⌨️ 开始打字动画');
     Timer.periodic(const Duration(milliseconds: 180), (timer) {
       if (_currentIndex < _fullText.length) {
         if (mounted) {
           setState(() {
             _currentIndex++;
           });
+          if (_currentIndex == _fullText.length) {
+            debugPrint('✅ 打字动画完成');
+          }
         }
       } else {
         timer.cancel();
       }
     });
+  }
+
+  void _navigateToMainScreen() async {
+    if (!mounted || !_isInitialized) return;
+    
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (!mounted) return;
+      
+      final prefs = await SharedPreferences.getInstance();
+      
+      // 🔍 更可靠的首次启动判断：
+      // 1. 检查 SharedPreferences 标记
+      // 2. 检查本地数据库是否为空
+      final hasLaunchedBefore = prefs.getBool('is_first_launch') == false;
+      final poemsCount = LocalStorageService.getPoemsCount();
+      final isFirstLaunch = !hasLaunchedBefore && poemsCount == 0;
+      
+      debugPrint('=== 启动判断 ===');
+      debugPrint('hasLaunchedBefore: $hasLaunchedBefore');
+      debugPrint('poemsCount: $poemsCount');
+      debugPrint('isAuthenticated: ${authProvider.isAuthenticated}');
+      debugPrint('isFirstLaunch: $isFirstLaunch');
+      debugPrint('===============');
+      
+      if (!mounted) return;
+      
+      if (isFirstLaunch) {
+        // ✅ 第一次启动：跳转到欢迎页面
+        debugPrint('✨ 首次启动，跳转到欢迎页面');
+        await prefs.setBool('is_first_launch', false);
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => const LocalHomeScreen(),
+            ),
+          );
+        }
+      } else {
+        // 非第一次启动：根据登录状态跳转
+        if (authProvider.isAuthenticated) {
+          // 已登录：跳转到个人作品列表
+          debugPrint('🔐 检测到已登录状态，跳转到个人作品页');
+          if (mounted) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (_) => const MyArticlesScreen(),
+              ),
+            );
+          }
+        } else {
+          // 未登录：跳转到本地作品列表
+          debugPrint('📱 未登录，跳转到本地作品页');
+          if (mounted) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (_) => const LocalPoemsScreen(),
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      // 如果出现错误，默认跳转到欢迎页面（最安全的选择）
+      debugPrint('❌ 启动页面出错: $e');
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => const LocalHomeScreen(),
+          ),
+        );
+      }
+    }
   }
 
   @override

@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:poem_verse_app/providers/auth_provider.dart';
 import 'package:poem_verse_app/screens/register_screen.dart';
-import 'package:poem_verse_app/screens/my_articles_screen.dart';
-import 'package:poem_verse_app/screens/home_screen.dart';
+
+import 'package:poem_verse_app/screens/local_home_screen.dart';
 import 'package:poem_verse_app/screens/forgot_password_screen.dart';
 import 'package:poem_verse_app/utils/text_menu_utils.dart';
 import 'dart:ui';
@@ -37,6 +37,30 @@ class LoginScreenState extends State<LoginScreen> {
 
     final email = _emailController.text;
     final password = _passwordController.text;
+    
+    // 显示登录中提示
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+              SizedBox(width: 12),
+              Text('登录中...'),
+            ],
+          ),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+    
     final success = await Provider.of<AuthProvider>(context, listen: false)
         .login(email, password);
 
@@ -45,13 +69,19 @@ class LoginScreenState extends State<LoginScreen> {
       _isLoading = false;
     });
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('登录成功！')),
-      );
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const MyArticlesScreen()),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ 登录成功！'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        
+        // 登录成功后直接跳转到个人作品列表
+        Navigator.of(context).pushNamedAndRemoveUntil('/my_articles', (route) => false);
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('登录失败，请检查邮箱和密码')),
@@ -125,7 +155,7 @@ class LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 12),
                         const Text(
-                          '登陆诗篇',
+                          '登录诗章',
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
@@ -308,7 +338,7 @@ class LoginScreenState extends State<LoginScreen> {
                   onPressed: () {
                     Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(builder: (_) => const HomeScreen()),
+                      MaterialPageRoute(builder: (_) => const LocalHomeScreen()),
                     );
                   },
                   icon: const Icon(

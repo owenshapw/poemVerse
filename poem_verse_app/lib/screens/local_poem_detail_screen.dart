@@ -1,66 +1,90 @@
-// lib/screens/article_detail_screen.dart
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'dart:ui';
-import 'package:poem_verse_app/models/article.dart';
-import 'package:poem_verse_app/widgets/simple_network_image.dart';
-import 'package:poem_verse_app/api/api_service.dart';
-import 'package:provider/provider.dart';
-import 'package:poem_verse_app/providers/auth_provider.dart';
-import 'package:poem_verse_app/providers/article_provider.dart';
+import 'dart:io';
+import 'package:poem_verse_app/models/poem.dart';
+import 'package:poem_verse_app/services/local_storage_service.dart';
 import 'package:poem_verse_app/screens/create_article_screen.dart';
+import 'package:poem_verse_app/widgets/interactive_image_preview.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'package:poem_verse_app/providers/auth_provider.dart';
+import 'package:poem_verse_app/screens/login_screen.dart';
+import 'package:poem_verse_app/utils/network_init_helper.dart';
 
-class ArticleDetailScreen extends StatefulWidget {
-  final List<Article> articles;
+class LocalPoemDetailScreen extends StatefulWidget {
+  final List<Poem> poems;
   final int initialIndex;
 
-  const ArticleDetailScreen({
+  const LocalPoemDetailScreen({
     super.key,
-    required this.articles,
+    required this.poems,
     required this.initialIndex,
   });
 
+  // 为了兼容旧的调用方式，提供一个工厂构造函数
+  factory LocalPoemDetailScreen.single({Key? key, required Poem poem}) {
+    // 获取所有诗章
+    final allPoems = LocalStorageService.getAllPoems();
+    // 找到当前诗章在列表中的位置
+    final index = allPoems.indexWhere((p) => p.id == poem.id);
+    
+    return LocalPoemDetailScreen(
+      key: key,
+      poems: allPoems,
+      initialIndex: index >= 0 ? index : 0,
+    );
+  }
+
   @override
-  ArticleDetailScreenState createState() => ArticleDetailScreenState();
+  LocalPoemDetailScreenState createState() => LocalPoemDetailScreenState();
 }
 
-class ArticleDetailScreenState extends State<ArticleDetailScreen> {
+class LocalPoemDetailScreenState extends State<LocalPoemDetailScreen> {
   PageController? _pageController;
-  late Article _article;
+  late Poem _poem;
   bool _isDeleting = false;
   int _currentPage = 0;
   final ScreenshotController _screenshotController = ScreenshotController();
-  
-  // 可见性控制状态
-  bool _isUpdatingVisibility = false;
+  List<Poem> _poems = [];
 
   @override
   void initState() {
     super.initState();
-    _article = widget.articles[widget.initialIndex];
-    _currentPage = widget.initialIndex;
+    // 处理单个 poem 的情况
+    if (widget.poems.isEmpty) {
+      // 这种情况下，我们需要从某个地方获取所有 poems
+      _poems = LocalStorageService.getAllPoems();
+      _currentPage = 0;
+      _poem = _poems.isNotEmpty ? _poems[0] : Poem(
+        id: 'empty',
+        title: '未找到诗章',
+        content: '',
+        createdAt: DateTime.now(),
+      );
+    } else {
+      _poems = List.from(widget.poems);
+      _currentPage = widget.initialIndex.clamp(0, _poems.length - 1);
+      _poem = _poems[_currentPage];
+    }
     
-    // 延迟初始化PageController以避免动画冲突
+    // 延迟初始化PageController
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         setState(() {
           _pageController = PageController(
-            initialPage: widget.initialIndex,
-            viewportFraction: 1.0, // 全屏显示，不缩放
+            initialPage: _currentPage,
+            viewportFraction: 1.0,
             keepPage: true,
           );
         });
       }
     });
   }
-  
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // 确保 PageController 有正确的 viewportFraction 设置
     if (_pageController != null && _pageController!.hasClients) {
       _pageController!.dispose();
     }
@@ -72,12 +96,7 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
     super.dispose();
   }
 
-  bool _isAuthor(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    return authProvider.userId == _article.userId;
-  }
-
-  Future<void> _deleteArticle() async {
+  Future<void> _deletePoem() async {
     if (_isDeleting) return;
     
     setState(() {
@@ -85,11 +104,6 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
     });
 
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
-      final token = authProvider.token!;
-      final articleId = _article.id;
-
       final confirmed = await _showDeleteConfirmDialog();
       if (confirmed != true) {
         setState(() {
@@ -102,12 +116,35 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
         _showLoadingDialog();
       }
 
-      await articleProvider.deleteArticle(token, articleId);
+      await LocalStorageService.deletePoem(_poem.id);
       
       if (mounted) {
         _hideLoadingDialog();
         _showSuccessMessage('诗章删除成功');
-        Navigator.of(context).pop('deleted'); // 返回删除标记
+        
+        // 从列表中移除已删除的诗章
+        _poems.removeAt(_currentPage);
+        
+        if (_poems.isEmpty) {
+          Navigator.of(context).pop('deleted');
+        } else {
+          // 调整当前页面索引
+          if (_currentPage >= _poems.length) {
+            _currentPage = _poems.length - 1;
+          }
+          _poem = _poems[_currentPage];
+          
+          // 更新页面控制器
+          if (_pageController != null) {
+            _pageController!.animateToPage(
+              _currentPage,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+            );
+          }
+          
+          setState(() {});
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -129,7 +166,7 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           title: const Text('确认删除'),
-          content: const Text('确定要删除这篇诗章吗？删除后无法恢复。'),
+          content: Text('确定要删除《${_poem.title}》吗？删除后无法恢复。'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -182,58 +219,85 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
     );
   }
 
-  Future<void> _editArticle() async {
+  Widget _buildPoemImage(Poem poem) {
+    final imageUrl = poem.imageUrl!;
+    final isLocalFile = imageUrl.startsWith('/') || imageUrl.startsWith('file://') || !imageUrl.startsWith('http');
+    
+    // 详情页面始终使用固定的图片位置，不受编辑页面调整的影响
+    if (isLocalFile) {
+      // 本地文件图片
+      return InteractiveImagePreview(
+        imageFile: File(imageUrl),
+        width: double.infinity,
+        height: double.infinity,
+        initialOffsetX: 0.0,
+        initialOffsetY: 0.0,
+        initialScale: 1.0,
+        onTransformChanged: null,
+        isInteractive: false,
+        fit: BoxFit.cover,
+      );
+    } else {
+      // 网络图片
+      return InteractiveImagePreview(
+        imageUrl: imageUrl,
+        width: double.infinity,
+        height: double.infinity,
+        initialOffsetX: 0.0,
+        initialOffsetY: 0.0,
+        initialScale: 1.0,
+        onTransformChanged: null,
+        isInteractive: false,
+        fit: BoxFit.cover,
+      );
+    }
+  }
+
+  Future<void> _editPoem() async {
     final updated = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => CreateArticleScreen(
-          article: _article,
+          localPoem: _poem,
           isEdit: true,
+          isLocalMode: true,
         ),
       ),
     );
     
     if (updated == true && mounted) {
-      // 编辑成功后重新获取文章数据，更新当前显示
-      try {
-        // 清理图片缓存
-        PaintingBinding.instance.imageCache.clear();
-        PaintingBinding.instance.imageCache.clearLiveImages();
-
-        
-        final updatedArticle = await ApiService.getArticleDetail(_article.id);
-        if (mounted) {
-          setState(() {
-            _article = updatedArticle;
-            // 更新articles列表中的对应文章
-            widget.articles[_currentPage] = updatedArticle;
-          });
-
-        }
-      } catch (e) {
-
-        // 如果刷新失败，仍然返回上一级
-        if (mounted) {
-          Navigator.of(context).pop();
-        }
-      }
+      // 重新加载诗章数据
+      final updatedPoems = LocalStorageService.getAllPoems();
+      final updatedPoem = updatedPoems.firstWhere(
+        (p) => p.id == _poem.id,
+        orElse: () => _poem,
+      );
+      
+      setState(() {
+        _poem = updatedPoem;
+        _poems[_currentPage] = updatedPoem;
+      });
     }
   }
 
-  Widget _buildVisibilityToggle() {
-    // 使用与其他导航按钮一致的轻盈风格
+  /// 云朵同步按钮（始终显示）
+  Widget _buildCloudSyncButton() {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final isLoggedIn = authProvider.isAuthenticated;
+    final unsyncedCount = LocalStorageService.getUnsyncedCount();
+    
     return Container(
-      height: 32, // 与其他导航按钮保持一致的轻盈高度
+      height: 32,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(8), // 统一圆角
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: Colors.white.withOpacity(0.15),
+          color: Colors.white.withValues(alpha: 0.15),
           width: 0.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -243,33 +307,24 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
-          onTap: _isUpdatingVisibility ? null : _toggleArticleVisibility,
+          onTap: _isDeleting ? null : _syncToCloud,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (_isUpdatingVisibility) ...[
-                  SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white.withOpacity(0.9)),
-                    ),
-                  ),
-                ] else ...[
-                  Icon(
-                    _article.isPublicVisible ? Icons.public : Icons.lock,
-                    color: Colors.white.withOpacity(0.9),
-                    size: 14,
-                  ),
-                ],
+                Icon(
+                  isLoggedIn 
+                      ? (unsyncedCount > 0 ? Icons.cloud_upload_outlined : Icons.cloud_done_outlined)
+                      : Icons.cloud_off_outlined,
+                  color: Colors.white.withValues(alpha: 0.9),
+                  size: 14,
+                ),
                 const SizedBox(width: 4),
                 Text(
-                  _article.isPublicVisible ? '公开' : '私密',
+                  isLoggedIn ? '同步' : '登录',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -281,84 +336,108 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
       ),
     );
   }
-
-  Future<void> _toggleArticleVisibility() async {
-    if (_isUpdatingVisibility) return;
-
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final token = authProvider.token;
+  
+  /// 同步到云端（按需初始化网络）
+  Future<void> _syncToCloud() async {
+    if (!mounted) return;
     
-    if (token == null) {
-      _showErrorMessage('请先登录');
+    // 按需初始化网络服务
+    final success = await NetworkInitHelper.ensureNetworkInitialized(context);
+    
+    if (!success || !mounted) return;
+    
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final isLoggedIn = authProvider.isAuthenticated;
+    
+    // 如果未登录，跳转到登录页面
+    if (!isLoggedIn) {
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+      
+      // 登录成功后会自动触发同步，这里检查是否成功
+      if (result == true && mounted) {
+        _showSuccessMessage('登录成功，开始同步...');
+        // 等待一下让 AuthProvider 更新
+        await Future.delayed(const Duration(milliseconds: 100));
+        if (mounted) {
+          final updatedAuthProvider = Provider.of<AuthProvider>(context, listen: false);
+          _performSync(updatedAuthProvider);
+        }
+      }
       return;
     }
-
-    final newVisibility = !_article.isPublicVisible;
     
-    setState(() {
-      _isUpdatingVisibility = true;
-    });
-    
-    try {
-      // 显示加载状态
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('正在${newVisibility ? '公开' : '隐藏'}作品...'),
-          duration: const Duration(seconds: 1),
+    // 已登录，直接执行同步
+    _performSync(authProvider);
+  }
+  
+  /// 执行同步操作
+  Future<void> _performSync(AuthProvider authProvider) async {
+    // 显示同步中提示
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+            SizedBox(width: 12),
+            Expanded(child: Text('正在同步本地作品到云端...')),
+          ],
         ),
-      );
+        duration: Duration(seconds: 30),
+      ),
+    );
 
-      // 调用API更新可见性
-      final result = await ApiService.updateArticleVisibility(
-        token,
-        _article.id,
-        newVisibility,
-      );
-
-      if (result['success'] == true) {
-        // 更新本地状态
-        setState(() {
-          _article = Article(
-            id: _article.id,
-            title: _article.title,
-            author: _article.author,
-            content: _article.content,
-            imageUrl: _article.imageUrl,
-            userId: _article.userId,
-            imageOffsetX: _article.imageOffsetX,
-            imageOffsetY: _article.imageOffsetY,
-            imageScale: _article.imageScale,
-            textPositionX: _article.textPositionX,
-            textPositionY: _article.textPositionY,
-            isPublicVisible: newVisibility,
-          );
-          
-          // 同时更新articles列表中的对应文章
-          widget.articles[_currentPage] = _article;
-        });
-
-        // 显示成功提示
-        HapticFeedback.lightImpact();
-        if (mounted) {
+    try {
+      final result = await authProvider.syncLocalPoems();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        
+        if (result.success) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('作品已${newVisibility ? '公开' : '隐藏'}'),
+              content: Text('✅ ${result.message}'),
               backgroundColor: Colors.green,
-              duration: const Duration(seconds: 2),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+          // 刷新当前诗章数据
+          final updatedPoems = LocalStorageService.getAllPoems();
+          setState(() {
+            _poems = updatedPoems;
+            if (_currentPage < _poems.length) {
+              _poem = _poems[_currentPage];
+            }
+          });
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('⚠️ ${result.message}'),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 3),
             ),
           );
         }
-      } else {
-        throw Exception('服务器返回失败状态');
       }
     } catch (e) {
-      // 显示错误提示
-      _showErrorMessage('更新失败: ${e.toString().contains('Exception:') ? e.toString().split('Exception: ')[1] : e.toString()}');
-    } finally {
       if (mounted) {
-        setState(() {
-          _isUpdatingVisibility = false;
-        });
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ 同步失败: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
       }
     }
   }
@@ -385,7 +464,7 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
           BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
             child: Container(
-              color: Colors.white.withOpacity(0.05),
+              color: Colors.white.withValues(alpha: 0.05),
             ),
           ),
           // Content
@@ -394,7 +473,7 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
               children: [
                 _buildTopBar(),
                 Expanded(
-                  child: _buildArticleContent(),
+                  child: _buildPoemContent(),
                 ),
               ],
             ),
@@ -410,7 +489,7 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // 返回按钮 - 优雅轻盈的设计
+          // 返回按钮
           _buildNavButton(
             icon: Icons.arrow_back_ios_rounded,
             onPressed: () => Navigator.of(context).pop(),
@@ -421,10 +500,10 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
           // 页面计数 - 居中显示
           Expanded(
             child: Center(
-              child: widget.articles.isNotEmpty
+              child: _poems.isNotEmpty
                   ? _buildNavTextButton(
-                      text: '${_currentPage + 1}/${widget.articles.length}',
-                      onPressed: null, // 页面计数不可点击
+                      text: '${_currentPage + 1}/${_poems.length}',
+                      onPressed: null,
                     )
                   : const SizedBox.shrink(),
             ),
@@ -432,42 +511,41 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
           
           const SizedBox(width: 12),
           
-          // 右侧编辑和删除按钮
-          if (_isAuthor(context))
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 编辑按钮
-                _buildNavButton(
-                  icon: Icons.edit_outlined,
-                  onPressed: (_isDeleting || _isUpdatingVisibility) ? null : _editArticle,
-                ),
-                
-                const SizedBox(width: 8),
-                
-                // 可见性控制按钮
-                _buildVisibilityToggle(),
-                
-                const SizedBox(width: 8),
-                
-                // 删除按钮 - 改为白色
-                _buildNavButton(
-                  icon: Icons.delete_outline,
-                  iconColor: Colors.white,
-                  onPressed: (_isDeleting || _isUpdatingVisibility) ? null : _deleteArticle,
-                ),
-              ],
+          // 右侧操作按钮
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 编辑按钮
+              _buildNavButton(
+                icon: Icons.edit_outlined,
+                onPressed: _isDeleting ? null : _editPoem,
+              ),
+              
+              const SizedBox(width: 8),
+              
+              // 云朵同步按钮（使用 TextButton 风格）
+              _buildCloudSyncButton(),
+              
+              const SizedBox(width: 8),
+              
+              // 删除按钮
+              _buildNavButton(
+                icon: Icons.delete_outline,
+                iconColor: Colors.white,
+                onPressed: _isDeleting ? null : _deletePoem,
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildArticleContent() {
-    if (widget.articles.isEmpty) {
+  Widget _buildPoemContent() {
+    if (_poems.isEmpty) {
       return const Center(
         child: Text(
-          '暂无文章',
+          '暂无诗章',
           style: TextStyle(color: Colors.white, fontSize: 16),
         ),
       );
@@ -482,25 +560,24 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
     }
 
     return ClipRect(
-      clipBehavior: Clip.none, // 确保不裁剪阴影
+      clipBehavior: Clip.none,
       child: PageView.builder(
-        itemCount: widget.articles.length,
+        itemCount: _poems.length,
         controller: _pageController!,
-        // 添加缓存页面以提高性能
         allowImplicitScrolling: true,
-        clipBehavior: Clip.none, // 关键修复：不裁剪阴影
-        physics: const BouncingScrollPhysics(), // 添加弹性滚动效果
+        clipBehavior: Clip.none,
+        physics: const BouncingScrollPhysics(),
         onPageChanged: (index) {
           if (mounted) {
             HapticFeedback.lightImpact();
             setState(() {
               _currentPage = index;
-              _article = widget.articles[index];
+              _poem = _poems[index];
             });
           }
         },
         itemBuilder: (context, index) {
-          final article = widget.articles[index];
+          final poem = _poems[index];
           
           return AnimatedBuilder(
             animation: _pageController!,
@@ -508,7 +585,6 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
               double scale = 1.0;
               double opacity = 1.0;
               
-              // 正常动画计算
               double page = _currentPage.toDouble();
               if (_pageController!.hasClients && _pageController!.position.haveDimensions) {
                 final currentPage = _pageController!.page;
@@ -519,32 +595,26 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
                     
               double distance = (page - index).abs();
               
-              // 确保 distance 是有效数值
               if (distance.isNaN || !distance.isFinite) {
                 distance = 0.0;
               }
               
-              // 缩放计算：当前页面为1.0，相邻页面为0.85，更远的为0.75
               if (distance <= 1.0) {
-                scale = 1.0 - (distance * 0.15); // 范围 0.85-1.0
+                scale = 1.0 - (distance * 0.15);
               } else {
-                scale = 0.75; // 更远的页面
+                scale = 0.75;
               }
               
-              // 确保 scale 是有效数值
               if (scale.isNaN || !scale.isFinite || scale < 0.1) {
                 scale = index == _currentPage ? 1.0 : 0.75;
               }
               
-              // 透明度计算
               opacity = (1.0 - distance.clamp(0.0, 1.0) * 0.25).clamp(0.75, 1.0);
               
-              // 确保 opacity 是有效数值
               if (opacity.isNaN || !opacity.isFinite) {
                 opacity = index == _currentPage ? 1.0 : 0.75;
               }
             
-              // 最终安全检查：确保所有数值都是有效的
               final safeScale = (scale.isNaN || !scale.isFinite || scale <= 0) ? 1.0 : scale.clamp(0.1, 2.0);
               final safeOpacity = (opacity.isNaN || !opacity.isFinite) ? 1.0 : opacity.clamp(0.0, 1.0);
               
@@ -552,31 +622,28 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
                 child: Transform.scale(
                   scale: safeScale,
                   child: Container(
-                    margin: const EdgeInsets.fromLTRB(16, 32, 16, 16), // 增加顶部间距16px（从16改为32）
+                    margin: const EdgeInsets.fromLTRB(16, 32, 16, 16),
                     child: Stack(
                       children: [
-                        // 阴影层 - 直接渲染到背景上
                         Container(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.3 * safeOpacity),
+                                color: Colors.black.withValues(alpha: 0.3 * safeOpacity),
                                 blurRadius: 20,
                                 offset: const Offset(0, 10),
                               )
                             ],
                           ),
                         ),
-                        // 卡片内容
-                        _buildArticleCard(article, safeOpacity),
+                        _buildPoemCard(poem, safeOpacity),
                       ],
                     ),
                   ),
                 ),
               );
 
-              // 只对当前页面应用Screenshot包装
               if (index == _currentPage) {
                 return Screenshot(
                   controller: _screenshotController,
@@ -587,18 +654,18 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
               }
             },
           );
-      },
+        },
       ),
     );
   }
 
-  Widget _buildArticleCard(Article article, [double opacity = 1.0]) {
+  Widget _buildPoemCard(Poem poem, [double opacity = 1.0]) {
     final textContent = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          article.title, 
+          poem.title, 
           style: const TextStyle(
             color: Colors.white, 
             fontSize: 28, 
@@ -609,21 +676,53 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
           )
         ),
         const SizedBox(height: 16),
-        Text(
-          article.author, 
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.9), 
-            fontSize: 17, 
-            shadows: const [
-              Shadow(color: Colors.black, offset: Offset(0, 1), blurRadius: 2)
-            ]
-          )
-        ),
+        if (poem.author?.isNotEmpty == true)
+          Text(
+            poem.author!, 
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.9), 
+              fontSize: 17, 
+              shadows: const [
+                Shadow(color: Colors.black, offset: Offset(0, 1), blurRadius: 2)
+              ]
+            )
+          ),
         const SizedBox(height: 20),
+        // 同步状态标识
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: (poem.synced ? Colors.green : Colors.orange).withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: (poem.synced ? Colors.green : Colors.orange).withValues(alpha: 0.4),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                poem.synced ? Icons.cloud_done : Icons.cloud_off,
+                size: 14,
+                color: poem.synced ? Colors.green[300] : Colors.orange[300],
+              ),
+              const SizedBox(width: 4),
+              Text(
+                poem.synced ? '已同步' : '未同步',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
         Flexible(
           child: SingleChildScrollView(
             child: Text(
-              article.content,
+              poem.content,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 17,
@@ -645,11 +744,8 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
         children: [
           // 背景图片
           Positioned.fill(
-            child: article.imageUrl.isNotEmpty
-                ? SimpleNetworkImage(
-                    imageUrl: ApiService.getImageUrlWithVariant(article.imageUrl, 'public'),
-                    fit: BoxFit.cover,
-                  )
+            child: (poem.imageUrl?.isNotEmpty == true)
+                ? _buildPoemImage(poem)
                 : Container(
                     color: Colors.grey[300],
                     child: const Center(
@@ -669,23 +765,23 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withOpacity(0.1),
-                    Colors.black.withOpacity(0.5),
-                    Colors.black.withOpacity(0.85),
+                    Colors.black.withValues(alpha: 0.1),
+                    Colors.black.withValues(alpha: 0.5),
+                    Colors.black.withValues(alpha: 0.85),
                   ],
                 ),
               ),
             ),
-        ),
-          // 文本内容 - 恢复原始的布局设置
+          ),
+          // 文本内容
           Positioned(
-            left: article.textPositionX ?? 15.0,
-            top: article.textPositionY ?? 200.0,
+            left: poem.textPositionX ?? 15.0,
+            top: poem.textPositionY ?? 200.0,
             bottom: 30.0,
             right: 12.0,
             child: textContent,
           ),
-                ],
+        ],
       ),
     );
   }
@@ -699,18 +795,18 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
     double? width,
   }) {
     return Container(
-      height: 32, // 轻盈的高度
-      width: width ?? 32, // 默认方形，可自定义宽度
+      height: 32,
+      width: width ?? 32,
       decoration: BoxDecoration(
-        color: (backgroundColor ?? Colors.white).withOpacity(0.12),
-        borderRadius: BorderRadius.circular(8), // 统一圆角
+        color: (backgroundColor ?? Colors.white).withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: Colors.white.withOpacity(0.15),
+          color: Colors.white.withValues(alpha: 0.15),
           width: 0.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -722,11 +818,11 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
           borderRadius: BorderRadius.circular(8),
           onTap: onPressed,
           child: Container(
-            padding: const EdgeInsets.all(6), // 精致的内边距
+            padding: const EdgeInsets.all(6),
             child: Icon(
               icon,
-              color: (iconColor ?? Colors.white).withOpacity(0.9),
-              size: 18, // 统一的图标尺寸
+              color: (iconColor ?? Colors.white).withValues(alpha: 0.9),
+              size: 18,
             ),
           ),
         ),
@@ -743,17 +839,17 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
     Widget? leading,
   }) {
     return Container(
-      height: 32, // 与图标按钮保持一致的高度
+      height: 32,
       decoration: BoxDecoration(
-        color: (backgroundColor ?? Colors.white).withOpacity(0.12),
-        borderRadius: BorderRadius.circular(16), // 更圆润的设计
+        color: (backgroundColor ?? Colors.white).withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.white.withOpacity(0.15),
+          color: Colors.white.withValues(alpha: 0.15),
           width: 0.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -776,7 +872,7 @@ class ArticleDetailScreenState extends State<ArticleDetailScreen> {
                 Text(
                   text,
                   style: TextStyle(
-                    color: (textColor ?? Colors.white).withOpacity(0.95),
+                    color: (textColor ?? Colors.white).withValues(alpha: 0.95),
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.3,

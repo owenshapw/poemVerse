@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'dart:io';
 import 'package:poem_verse_app/models/article.dart';
 import 'package:poem_verse_app/widgets/simple_network_image.dart';
 import 'package:poem_verse_app/api/api_service.dart';
@@ -10,8 +11,10 @@ import 'package:poem_verse_app/providers/auth_provider.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:poem_verse_app/config/app_config.dart';
-
 import 'package:poem_verse_app/providers/article_provider.dart';
+import 'package:poem_verse_app/models/poem.dart';
+import 'package:poem_verse_app/services/local_storage_service.dart';
+import 'package:uuid/uuid.dart';
 
 class ArticlePreviewScreen extends StatefulWidget {
   final String title;
@@ -25,6 +28,8 @@ class ArticlePreviewScreen extends StatefulWidget {
   final double? imageOffsetX; // 添加图片变换参数
   final double? imageOffsetY;
   final double? imageScale;
+  final bool isLocalMode; // 添加本地模式标记
+  final Poem? localPoem; // 本地作品（用于编辑）
 
   const ArticlePreviewScreen({
     super.key,
@@ -39,6 +44,8 @@ class ArticlePreviewScreen extends StatefulWidget {
     this.imageOffsetX,
     this.imageOffsetY,
     this.imageScale,
+    this.isLocalMode = false,
+    this.localPoem,
   });
 
   @override
@@ -57,6 +64,57 @@ class ArticlePreviewScreenState extends State<ArticlePreviewScreen> {
     _textPositionY = widget.initialTextPositionY;
   }
   
+  // 保存本地作品
+  Future<void> _saveLocalPoem() async {
+    if (_isPublishing) return;
+    setState(() { _isPublishing = true; });
+
+    try {
+      const uuid = Uuid();
+      final poem = Poem(
+        id: widget.localPoem?.id ?? uuid.v4(),
+        title: widget.title,
+        content: widget.content,
+        imageUrl: widget.imageUrl,
+        createdAt: widget.localPoem?.createdAt ?? DateTime.now(),
+        synced: false,
+        imageOffsetX: 0.0,
+        imageOffsetY: widget.imageOffsetY ?? 0.0, // 使用从编辑页面传入的值
+        imageScale: 1.0,
+        author: widget.author,
+        textPositionX: _textPositionX, // 保存调整后的文字位置
+        textPositionY: _textPositionY,
+      );
+      
+      await LocalStorageService.savePoem(poem);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(widget.isEdit ? '修改已保存' : '作品已保存'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+        // 返回 'saved' 状态，让编辑页面关闭
+        Navigator.of(context).pop('saved');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('保存失败: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() { _isPublishing = false; });
+      }
+    }
+  }
+
   Future<void> _publishArticle() async {
     if (_isPublishing) return;
     setState(() { _isPublishing = true; });
@@ -162,6 +220,48 @@ class ArticlePreviewScreenState extends State<ArticlePreviewScreen> {
     }
   }
 
+  // 构建背景图片组件
+  Widget _buildBackgroundImage(String imageUrl) {
+    final isLocalFile = imageUrl.startsWith('/') || imageUrl.startsWith('file://');
+    
+    // 本地模式下，图片居中显示，不应用offset和缩放
+    if (widget.isLocalMode && isLocalFile) {
+      return Image.file(
+        File(imageUrl),
+        fit: BoxFit.cover,
+        alignment: Alignment.center, // 居中显示
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.grey[300],
+            child: const Center(
+              child: Icon(Icons.broken_image, color: Colors.grey, size: 50),
+            ),
+          );
+        },
+      );
+    } else if (isLocalFile) {
+      // 非本地模式的本地文件（不应该出现）
+      return Image.file(
+        File(imageUrl),
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.grey[300],
+            child: const Center(
+              child: Icon(Icons.broken_image, color: Colors.grey, size: 50),
+            ),
+          );
+        },
+      );
+    } else {
+      // 网络图片（云端模式）
+      return SimpleNetworkImage(
+        imageUrl: ApiService.getImageUrlWithVariant(imageUrl, 'public'),
+        fit: BoxFit.cover,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -234,7 +334,7 @@ class ArticlePreviewScreenState extends State<ArticlePreviewScreen> {
             ),
           ),
           
-          // 发布按钮 - 与article_detail_screen保持一致的32px轻盈风格
+          // 保存/发布按钮 - 根据模式显示不同文本
           Container(
             height: 32, // 调整为与article_detail_screen一致的轻盈高度
             decoration: BoxDecoration(
@@ -257,7 +357,11 @@ class ArticlePreviewScreenState extends State<ArticlePreviewScreen> {
               child: InkWell(
                 borderRadius: BorderRadius.circular(8),
                 onTap: _isPublishing ? null : () async {
-                  await _publishArticle();
+                  if (widget.isLocalMode) {
+                    await _saveLocalPoem();
+                  } else {
+                    await _publishArticle();
+                  }
                 },
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), // 调整内边距适应32px高度
@@ -271,7 +375,7 @@ class ArticlePreviewScreenState extends State<ArticlePreviewScreen> {
                           ),
                         )
                       : Text(
-                          '发布',
+                          widget.isLocalMode ? '保存' : '发布',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.9),
                             fontSize: 12, // 调整字体大小适应轻盈设计
@@ -304,6 +408,10 @@ class ArticlePreviewScreenState extends State<ArticlePreviewScreen> {
       content: widget.content,
       imageUrl: widget.imageUrl ?? '',
       userId: currentUserId,
+      // 本地模式下，预览页面不应用offset（图片居中显示）
+      imageOffsetX: widget.isLocalMode ? 0.0 : (widget.imageOffsetX ?? 0.0),
+      imageOffsetY: widget.isLocalMode ? 0.0 : (widget.imageOffsetY ?? 0.0),
+      imageScale: widget.isLocalMode ? 1.0 : (widget.imageScale ?? 1.0),
     );
 
     final textContent = Column(
@@ -345,7 +453,7 @@ class ArticlePreviewScreenState extends State<ArticlePreviewScreen> {
           children: [
             Positioned.fill(
               child: article.imageUrl.isNotEmpty
-                  ? SimpleNetworkImage(imageUrl: ApiService.getImageUrlWithVariant(article.imageUrl, 'public'), fit: BoxFit.cover)
+                  ? _buildBackgroundImage(article.imageUrl)
                   : Container(color: Colors.grey[200]),
             ),
             Positioned.fill(
